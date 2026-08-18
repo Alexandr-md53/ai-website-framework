@@ -2,73 +2,38 @@
 
 Phase 1–4: Initial Framework Core & Generator (Завершено ✅)
 [x] Phase 1: Core Foundation
-
 [x] Phase 2: Modular Engines & Provider Layers
-
 [x] Phase 3: Generator Pipeline
-
 [x] Phase 4: Quality & Testing
 
-
-# Phase 5: Reference Project Analysis & Migration (В процессе ⏳)
-
+# Phase 5: Reference Project Analysis & Core Infrastructure (Завершено ✅)
 [x] 5.1 Reference Project Analysis (REFERENCE_PROJECT_ANALYSIS.md)
-
 [x] 5.2 Migration Map Creation (MIGRATION_MAP.md)
+[x] 5.3 Core Infrastructure Modules & Engines
+  [x] 5.3.1 Localization Engine (LOC_01) — Completed
+  [x] 5.3.2 Slug Service (SLG_01) — Completed
+  [x] 5.3.3 Asset Manager (ASM_01) — Completed
+  [x] 5.3.4 Persistence Layer (DB_01) — Completed
+  [x] 5.3.5 Validation Engine (VL_01) — Completed
+  [x] 5.3.6 CRUD Engine & Slug Integration (CRUD_SLG_01) — Completed (commit dd543f7)
 
+# Phase 6: Application & Domain Layer (👉 ТЕКУЩИЙ ЭТАП ⏳)
+[ ] 6.1 Domain Model Contract (Stage 1)
+  [ ] Pure Domain Entities (Entity, Metadata, Fields, Lifecycle, Validation)
+  [ ] Zero External Dependencies Rule (Flask / DB / Framework-agnostic)
+[ ] 6.2 Application Service Layer (Stage 2)
+  [ ] High-level Application Workflows over CRUDEngine Facade
+[ ] 6.3 Domain & Application Events (Stage 3)
+  [ ] Event contracts: EntityCreated, EntityUpdated, EntityDeleted, SlugChanged
+[ ] 6.4 Application Pipeline (Stage 4)
+  [ ] End-to-end Request → Application Service → CRUDEngine → Event → Response
 
-[x] 5.3 Pilot Modules & Core Specification Migration
+# Phase 7: Universal Admin Panel Engine (Будущий этап 🚀)
+[ ] 7.1 Metadata Engine & Driven Forms
+[ ] 7.2 Dynamic Content-Type CRUD UI
+[ ] 7.3 Universal Media & Settings Manager
 
-[x] 5.3.1 Localization Engine (LOC_01) — Specification, Implementation & Tests Completed
-
-[x] 5.3.2 Slug Service (SLG_01) — Specification, Implementation & Tests Completed
-
-[x] 5.3.3 Asset Manager (ASM_01) — Specification, Implementation & Tests Completed
-
-[x] 5.3.4 Persistence Layer (DB_01) — Specification, Implementation & Tests Completed
-
-[x] 5.3.5 Validation Engine (VL_01) — 👉 ТЕКУЩИЙ ЭТАП
-
-[x] Step 1: Architecture Concept & Boundaries Definition
-
-[x] Step 2: Specification Document (VL_01_Validation_Engine_Spec.md)
-
-[x] Step 3: Public API Contracts (ValidationEngine, validate, validate_field)
-
-[x] Step 4: External Service Delegates (Metadata Engine, Persistence, Slug)
-
-[x] Step 5: Implementation Phase
-
-[x] Step 6: Unit Testing & Quality Gate
-
-
-# Phase 6: Universal Admin Panel Engine (Будущий этап 🚀)
-
-[x] 6.1 Metadata Engine & Driven Forms
-
-[x] Schema Parser & Validator
-
-[x] Dynamic Form Generator
-
-
-[x] 6.2 Dynamic Content-Type CRUD Engine
-
-[x] Content-Type Registry
-
-[x] Generic Controller & Service Handlers
-
-
-[x] 6.3 Universal Media & Settings Manager
-
-[x] Media Library UI / API Integration
-
-[x] System Configuration Manager
-
-
-# Phase 7: Business Showcases (Будущий этап 🚀)
-
-[ ] 7.1 Plant Nursery Showcase (Реальный референсный проект)
-
-[ ] 7.2 Cafe Showcase
-
-[ ] 7.3 Service / Lawyer Showcase
+# Phase 8: Business Showcases (Будущий этап 🚀)
+[ ] 8.1 Plant Nursery Showcase
+[ ] 8.2 Cafe Showcase
+[ ] 8.3 Service / Lawyer Showcase

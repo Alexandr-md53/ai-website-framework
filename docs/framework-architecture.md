@@ -1,130 +1,59 @@
-Да, именно так и делаем.
+Обновлённая каноническая версия файла docs/framework-architecture.md (v1.2) с учётом всех уточнений по Zero Domain Knowledge, __slug_config__ и фасадной оркестрации:
 
-Но есть технический момент: **сам репозиторий `AI_Website_Framework` сейчас не смонтирован в доступную мне файловую систему**, поэтому я не могу физически выполнить замену `docs/framework-architecture.md` или прочитать `framework-structure.md`. Попытка обратиться к PowerShell из среды выполнения также не сработала.
-
-Чтобы не делать вид, что файл изменён, **я его сейчас не считаю изменённым**.
-
-На твоей стороне выполни в PowerShell:
-
-````powershell
-@'
-# Framework Architecture
-
-## Overview
-
-AI Website Framework is built around a simple principle:
-
-> The Framework provides the engine.
-> Each project provides the business domain.
-
-The Framework never contains business-specific logic.
-Business logic is added through reusable domain modules and configuration.
-
----
-
+Markdown
 # High-Level Runtime Architecture
 
-The Framework consists of four operational runtime engines and an orchestration layer that handle data flow and AI content generation.
+**Document:** `framework-architecture.md`  
+**Status:** Approved (v1.2)  
+**Version:** 1.2  
+
+The Framework consists of operational runtime engines and orchestration layers that handle data flow, persistence, slug management, and AI content generation as independent, decoupled subsystems.
 
 ```text
-Application / Domain Layer
-            │
-            ▼
-  Universal CRUD Engine
-            │
-            ▼
-    Validation Engine
-            │
-            ▼
-       AI Pipeline Subsystem
-┌───────────┬───────────────┬────────────────────────┐
-│           │               │                        │
-│  Prompt   │   AIService   │    StructuredOutput    │
-│ Pipeline  │ (Orchestrator)│        Parser          │
-│           │               │                        │
-└───────────┴───────┬───────┴────────────────────────┘
-                    │
-                    ▼
-          AI Provider Subsystem
-(Protocol ── Resilient ── Cache ── OpenRouter)
-````
+                     Application / Domain Layer
+                                 │
+                     ┌───────────┴───────────┐
+                     │                       │
+                     ▼                       ▼
+               CRUD Subsystem          AI Pipeline Subsystem
+                     │                       │
+           ┌───────────────────┐   ┌───────────────────┐
+           │ CRUDEngine Facade │   │ AIService Orch.   │
+           └─────────┬─────────┘   └─────────┬─────────┘
+     ┌───────────────┼───────────────┐       │
+     ▼               ▼               ▼       ▼
+Validation      UniversalCRUD     AsyncSlug AI Provider
+  Engine        (Low-Level)     Orchestrator Subsystem
+                     │
+                     ▼
+            PersistenceProvider
+             (In-Memory/SQLite)
+1. Core Framework Subsystems
+1.1 CRUD & Persistence Subsystem (ai_framework.crud)
+CRUDEngine (Facade Layer): High-level schema-aware facade layer separating low-level storage operations from domain-level schema logic (__slug_config__). Orchestrates data validation via ValidationEngine, persistence via UniversalCRUDEngine, and slug lifecycle resolution via AsyncSlugOrchestrator.
 
-# 1. Core Framework Subsystems
+ValidationEngine: Execution boundary for schema validation. Enforces data integrity prior to state mutations (Validation-First principle).
 
-## 1.1 Universal CRUD Engine (`ai_framework.crud`)
+UniversalCRUDEngine (Low-Level CRUD): Pure storage abstraction providing universal CRUD operations across backend persistence providers without domain or slug awareness.
 
-Provides persistence abstraction and universal CRUD operations across storage backends (In-Memory, SQLite, Relational DBs) through standardized contexts and results.
+AsyncSlugOrchestrator (Slug Service): Asynchronous slug manager handling custom slug validation, auto-generation from mapped source fields defined in __slug_config__, and iterative collision resolution (-2, -3).
 
-## 1.2 Validation Engine (`ai_framework.validation`)
+PersistenceProvider: Storage backend contract and implementation (In-Memory, SQLite, Relational DBs).
 
-Handles system-wide schema and entity validation. Executes format, type, requirement, and domain delegates (slug, uniqueness, metadata) before data state mutation or persistence.
+1.2 AI Pipeline Subsystem (ai_framework.ai)
+Prompt Pipeline: Assembles structured prompt components, system instructions, and dynamic context parameters.
 
-## 1.3 AI Provider Subsystem (`ai_framework.ai_provider`)
+AIService (Orchestrator): Manages AI execution lifecycle, provider routing, fallback policies, and retry strategies.
 
-Abstraction layer over LLM providers (Stage 3):
+StructuredOutputParser: Validates and converts LLM output into strictly structured JSON or schema contracts.
 
-* **`AIProviderProtocol`**: Core contract defining `complete(request: AIRequest) -> AIResponse`.
-* **`OpenRouterAdapter`**: Production HTTP client adapter for OpenRouter API.
-* **`ResilientProvider`**: Resiliency layer implementing retry mechanisms and provider failovers.
-* **`CachedAIProvider`**: Performance layer providing `InMemoryCache` for prompt-response pairs.
+AI Provider Subsystem: Low-level provider protocol abstraction (OpenRouter protocol, caching, resilience, rate-limiting).
 
-## 1.4 AI Pipeline Subsystem (`ai_framework.pipeline`)
+2. Architectural Rules & Subsystem Isolation
+Decoupled Subsystems: The CRUD Subsystem and AI Pipeline Subsystem operate as independent architectural branches. Basic CRUD operations do not implicitly invoke AI services. Orchestration between storage and AI generation occurs exclusively at the Application / Domain Layer.
 
-Prompt processing, execution, and parsing layer (Stage 4):
+Validation-First: Mutation requests are validated before persistence mutations are performed. Slug resolution and uniqueness checks are orchestrated by CRUDEngine through AsyncSlugOrchestrator.
 
-* **`PromptPipeline`**: Handles prompt variable substitution, context building, system instruction injection, and pre-flight validation.
-* **`StructuredOutputParser`**: Extracts JSON payloads from raw text / Markdown code blocks (`json ...`), validates parsed JSON against schemas or `ValidationEngine`, and wraps failures into `OutputParseError`.
-* **`AIService`**: High-level **pure orchestration layer**. Coordinates `PromptPipeline` → `AIProvider` → `StructuredOutputParser`. Contains **zero business logic**. Transparently bubbles up all underlying exceptions (`PromptError`, `AIError`, `OutputParseError`).
+Zero Domain Knowledge: CRUDEngine operates strictly on structural metadata contracts (__slug_config__, using keys such as source_field and slug_field) without awareness of domain entities (such as plants, articles, products, or doctors) or business semantics.
 
-# 2. Structural Layers
-
-```text
-AI Website Framework
-│
-├── Framework Core (`ai_framework/`, `framework/core/`)
-├── Reusable Components (`framework/components/`)
-├── Domain Layer (`framework/domains/` e.g., Nursery, Cafe)
-├── Project Generator (`framework/generator/`)
-└── Generated Projects (`output/`)
-```
-
-### 2.1 Framework Core
-
-Contains universal mechanisms that operate independently of any business domain (routing, configuration, CRUD, validation, AI providers, AI pipeline, localization, storage).
-
-### 2.2 Components
-
-Portable UI and functional building blocks (cards, forms, catalog, gallery, AI assistant).
-
-### 2.3 Domain Layer
-
-Defines business-specific terminology, schemas, rules, entities, and AI prompt contexts for a target industry (e.g., Nursery, Cafe).
-
-### 2.4 Project Generator & Generated Projects
-
-Assembles standalone, independent applications from core engines, selected components, and a target domain configuration.
-
-# 3. Architectural Rules & Error Propagation
-
-1. **Universality First**: Every feature in the Framework Core must be 100% domain-agnostic.
-
-2. **AIService Pure Orchestration Rule**: `AIService` only binds the pipeline, provider, and parser. It must not alter payloads, execute domain validation, or swallow errors.
-
-3. **Transparent Exception Flow**:
-
-   * `PromptError` / `OutputParseError`: Raised during prompt assembly or response parsing.
-   * `AIError`: Raised during provider transport/API failures.
-   * All errors pass directly through `AIService` to the application/domain caller.
-
-4. **Dependency Direction**:
-
-```text
-Generated Project ──► Domain / Components ──► Framework Core
-```
-
-Circular dependencies between layers are strictly forbidden.
-'@ | Set-Content docs/framework-architecture.md -Encoding UTF8
-
-````
-
-
+Standalone Storage Reliability: The CRUD and persistence layer remains 100% operational without any dependency on external AI services.

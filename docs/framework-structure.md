@@ -1,81 +1,164 @@
-# AI Website Framework Structure
+# AI Website Framework Physical Structure
 
 **Document:** `framework-structure.md`  
-**Status:** Canonical  
-**Version:** 1.1  
-**Last Updated:** 2026-08-13
+**Status:** Stable  
+**Version:** 1.2  
+**Role:** Canonical  
+**Last Updated:** 2026-08-18  
+**Verified Against:** `dd543f7`  
 
 ---
 
 ## 1. Purpose
 
-This document defines the canonical physical structure of the AI Website Framework, including:
-
-- package boundaries;
-- implemented vs planned module responsibilities;
-- dependency and import rules;
-- Framework / Application boundary;
-- Single Source of Truth policy.
+This document defines the canonical physical structure of the AI Website Framework, including package boundaries, module statuses, implemented vs. planned layers, physical location mappings, and import dependency rules.
 
 ---
 
 ## 2. Canonical Framework Package
 
-The only canonical Framework package is:
+The single canonical Framework package is:
 
 ```text
 ai_framework/
-All universal Framework functionality MUST exist inside this package.The legacy duplicated framework/ package has been completely removed.Plaintextai_framework/
-      ↓
-Single Source of Truth
+All universal Framework functionality MUST exist inside this package. Legacy or duplicated packages are strictly prohibited.
 
-## 3. Physical Package Map (Current vs Planned)To maintain clarity and prevent documentation drift, modules are strictly categorized by their current implementation status:Plaintextai_framework/
+3. Current Physical Package Map
+Plaintext
+ai_framework/
 │
-├── [CURRENT / IMPLEMENTED]
-│   ├── crud/           ← Universal CRUD Engine (Stages 1-2)
-│   ├── validation/     ← Validation Engine (Stage 2)
-│   ├── ai_provider/    ← AI Provider Subsystem (Stage 3)
-│   └── pipeline/       ← AI Pipeline & Orchestration (Stage 4)
-│
-└── [PLANNED / TARGET ARCHITECTURE]
-    ├── core/           ← Shared Registry, Contracts & Settings
-    ├── metadata/       ← Metadata Engine
-    ├── generators/     ← Content Generator Pipeline
-    ├── plugins/        ← Plugin Architecture
-    ├── localization/   ← Multilingual Engine
-    └── services/       ← Core Services (Slug, Asset Manager)
+├── crud/            ← CRUDEngine (Facade), UniversalCRUDEngine & Persistence Providers
+├── validation/      ← ValidationEngine (Validation-First Boundary)
+├── ai_provider/     ← AI Provider Subsystem (Adapters, Resilience, Cache)
+├── pipeline/        ← AI Pipeline Subsystem & AIService Orchestrator
+├── localization/    ← Localization Engine (LOC_01)
+└── services/        ← Domain-Agnostic Infrastructure Services
+    ├── slug/        ← Slug Service (SlugGenerator, AsyncSlugOrchestrator)
+    └── asset/       ← Asset Manager (ASM_01)
+4. Implemented Subsystems
+4.1 CRUD Engine & Persistence Subsystem
+Location: ai_framework/crud/
 
-4. Implemented Subsystems (Current State)
-4.1 Universal CRUD EngineLocation: ai_framework/crud/Status: Implemented & VerifiedProvides database-agnostic CRUD operations, generic handlers, and persistent storage abstractions.
-4.2 Validation EngineLocation: ai_framework/validation/Status: Implemented & VerifiedProvides schema validation, built-in rules, entity integrity checks, context handling, and delegate injection without binding to specific business entities.
-4.3 AI Provider Subsystem (Stage 3)
--Location: ai_framework/ai_provider/Status: Implemented & VerifiedContains abstractions and provider implementations for LLM interaction:contracts.py: AIProviderProtocol, AIRequest, AIResponse, ChatMessage, TokenUsage, FinishReason, AIError.adapters/: OpenRouterAdapter.resilience/: ResilientProvider (retry / fallback mechanisms).cache/: CachedAIProvider (InMemoryCache).
-4.4 AI Pipeline Subsystem (Stage 4)
--Location: ai_framework/pipeline/Status: Implemented & VerifiedContains prompt construction, parsing, and orchestration components:
--PromptPipeline: Variable substitution, context injection, pre-flight prompt validation.
--StructuredOutputParser: Markdown/JSON extraction, schema validation, ValidationEngine integration.
--AIService: Pure orchestration layer binding Pipeline → Provider → Parser.
+CRUDEngine (engine.py): High-level schema-aware facade layer that separates low-level persistence operations from domain-specific business logic. Operates strictly on structural metadata contracts such as __slug_config__ without knowledge of domain entities or business semantics. Orchestrates validation (ValidationEngine), low-level CRUD (UniversalCRUDEngine), and slug lifecycle management (AsyncSlugOrchestrator).
 
-5. Target Subsystems (Planned State)The following packages are reserved for future architectural expansion and MUST NOT be imported until implemented:SubsystemLocationTarget PurposeCore Infrastructureai_framework/core/Central registry, system settings, base exceptionsMetadata Engineai_framework/metadata/Structural entity & form descriptionsGenerator Pipelineai_framework/generators/Multi-step build & content renderingPlugin Systemai_framework/plugins/Extension contracts and registrationLocalization Engineai_framework/localization/Multilingual string resolutionCore Servicesai_framework/services/Universal utilities (Asset Manager, Slugifier)
+UniversalCRUDEngine (universal.py): Low-level storage abstraction executing universal CRUD operations across backend persistence providers without domain or slug awareness.
 
-6. Import Rules & BoundariesCanonical Import RuleAll imports MUST reference ai_framework and its exact subsystem packages:Python# CORRECT
-from ai_framework.ai_provider import AIRequest, AIResponse
-from ai_framework.pipeline import AIService, PromptPipeline
+PersistenceProvider (ai_framework/crud/): Storage backend contract and implementations (e.g., In-Memory, SQLite) providing concrete persistence execution abstractions.
+
+ValidationEngine (ai_framework/validation/): Validation boundary executing schema integrity checks prior to data persistence (Validation-First).
+
+AsyncSlugOrchestrator (ai_framework/services/slug/): Asynchronous slug manager providing custom slug validation and automatic collision resolution (-2, -3). Physically located in services/slug/ as a reusable infrastructure component consumed by CRUDEngine.
+
+4.2 Slug Service
+Location: ai_framework/services/slug/
+
+Status: Implemented & Verified (SLG_01)
+
+Provides asynchronous slug generation, collision detection/resolution, and URL identifier resolution through SlugGenerator and AsyncSlugOrchestrator. Acts as an independent infrastructure service consumed by the CRUD facade.
+
+4.3 Validation Engine
+Location: ai_framework/validation/
+
+Status: Implemented & Verified (VL_01)
+
+Provides schema-driven validation, built-in type/format validators, context management, and optional delegate hooks for external validation concerns such as slug and uniqueness checks.
+
+4.4 Localization Engine
+Location: ai_framework/localization/
+
+Status: Implemented & Verified (LOC_01)
+
+Handles multilingual translation resolution, fallback mechanisms, and locale context state.
+
+4.5 Asset Manager
+Location: ai_framework/services/asset/
+
+Status: Implemented & Verified (ASM_01)
+
+Manages static and dynamic media assets, paths, and lifecycle storage.
+
+4.6 AI Provider Subsystem
+Location: ai_framework/ai_provider/
+
+Status: Implemented & Verified
+
+Provides LLM protocol abstractions (AIProviderProtocol), production adapters (OpenRouterAdapter), resilience handlers (ResilientProvider), and response caching (CachedAIProvider).
+
+4.7 AI Pipeline Subsystem
+Location: ai_framework/pipeline/
+
+Status: Implemented & Verified
+
+Provides prompt construction (PromptPipeline), structured output parsing (StructuredOutputParser), and pure LLM workflow orchestration (AIService). Depends directly on ai_provider/.
+
+5. Infrastructure Services Boundary (ai_framework/services/)
+Domain-Agnostic Policy: The ai_framework/services/ package MUST contain only domain-agnostic, reusable infrastructure services (e.g., slug, asset).
+
+No Domain Pollution: Placing domain-specific logic, business entities, or domain services (e.g., plant_service, product_service, article_service) inside ai_framework/services/ is strictly forbidden.
+
+Physical vs. Architectural Role: Physical placement in services/ does not grant business ownership. Infrastructure services are independent utility layers consumed by high-level facades or application workflows.
+
+6. Import Rules & Isolation Boundaries
+6.1 Canonical Import Rule
+All imports MUST reference ai_framework and its exact subsystem packages. Relative or legacy import paths are strictly prohibited.
+
+Python
+# CORRECT
+from ai_framework.crud import CRUDEngine, UniversalCRUDEngine
+from ai_framework.services.slug import AsyncSlugOrchestrator, SlugGenerator
 from ai_framework.validation import ValidationEngine
-Forbidden ImportsPython# FORBIDDEN (Legacy package)
-from framework.ai import ...
+from ai_framework.ai_provider import AIRequest, AIResponse
+from ai_framework.pipeline import AIService
+Python
+# FORBIDDEN (Legacy package structure)
+from framework.crud import ...
 
-# FORBIDDEN (Outdated subsystem naming)
-from ai_framework.ai import ...
-Path ManipulationSystem path hacks (sys.path.append(...)) are strictly prohibited. The framework must be installed or referenced via standard package resolution.
+# FORBIDDEN (Path manipulation hacks)
+import sys; sys.path.append(...)
+6.2 Subsystem Isolation Rules
+CRUD ↔ AI Pipeline Independence: ai_framework/crud/ and ai_framework/pipeline/ (or ai_framework/ai_provider/) operate as completely independent branches. Direct cross-imports between CRUD and AI subsystems are strictly prohibited.
 
-7. Dependency DirectionPlaintextApplication / Domain Layer
-            │
-            ▼
-      ai_framework/
-  ┌─────────┴─────────┐
-  ▼                   ▼
-pipeline        ai_provider
-  │                   ▲
-  └───────────────────┘
-Framework Core modules MUST NEVER depend on Application code.AIService Orchestrator depends on PromptPipeline, AIProviderProtocol, and StructuredOutputParser.Circular dependencies across modules are strictly forbidden.8. Summary RuleOne Framework. One canonical package (ai_framework). Actual state matches 241 passing tests.
+Pipeline → AI Provider Dependency: ai_framework/pipeline/ may import from ai_framework/ai_provider/. Reverse dependency (ai_provider → pipeline) is forbidden.
+
+Circular Import Prohibition: Circular dependencies between any packages or subsystems are strictly forbidden.
+
+7. Dependency Directions
+Note: Dependency directions shown in this section describe component-level dependencies; physical package boundaries are defined separately in Section 3.
+
+7.1 Current State Dependency Flow (Stage 1–5)
+Plaintext
+CRUDEngine (Facade)
+   ├──► ValidationEngine (ai_framework/validation)
+   ├──► AsyncSlugOrchestrator (ai_framework/services/slug)
+   └──► UniversalCRUDEngine (ai_framework/crud)
+           └──► PersistenceProvider (ai_framework/crud)
+
+AIService (Pipeline Orchestrator)
+   └──► AIProviderProtocol (ai_framework/ai_provider)
+7.2 Target Clean Architecture Dependency Flow (Stage 6+)
+Plaintext
+                 Application Layer [Planned Stage 6]
+                        │
+                        ▼
+                   Domain Layer [Planned Stage 6]
+              (Contracts / Ports / Interfaces)
+                        ▲
+                        │
+          ┌─────────────┴─────────────┐
+          │                           │
+   Framework Infrastructure      AI Infrastructure
+          │                           │
+   ┌──────┼────────┐            ┌─────┴─────┐
+   ▼      ▼        ▼            ▼           ▼
+  CRUD  Validation Services   Pipeline   AI Provider
+8. Planned Architectural Layers (Stage 6+)
+The following packages represent planned architectural layers for Stage 6 and beyond. They are explicitly separated from the currently implemented physical package map:
+
+Plaintext
+ai_framework/
+├── domain/            ← [STAGE 6] Pure Domain Entities & Contracts (Zero Infrastructure Dependencies)
+├── application/       ← [STAGE 6] Application Services & Pipeline Workflows
+├── core/              ← Shared Registry, System Contracts & Settings
+├── metadata/          ← Metadata Engine & Driven Schema Parsers
+├── generators/        ← Content & Site Generator Pipeline
+└── plugins/           ← Extension Systems & Plugin Contracts
