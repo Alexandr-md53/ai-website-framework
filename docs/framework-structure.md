@@ -162,3 +162,17 @@ ai_framework/
 ├── metadata/          ← Metadata Engine & Driven Schema Parsers
 ├── generators/        ← Content & Site Generator Pipeline
 └── plugins/           ← Extension Systems & Plugin Contracts
+
+
+Stage 6.3:
+ai_framework/
+├── domain/
+│   └── contracts/
+│       └── repositories.py       # Domain interface: ArticleRepository
+├── infrastructure/
+│   └── repositories/
+│       └── article_repository.py # Adapter: CRUDArticleRepository
+└── crud/
+    ├── contracts.py              # PersistenceProviderProtocol, UniversalCRUDEngineProtocol
+    ├── engine.py                 # UniversalCRUDEngine
+    └── persistence.py            # InMemoryPersistenceProvider, SQLitePersistenceProvider

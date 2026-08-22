@@ -57,3 +57,24 @@ Validation-First: Mutation requests are validated before persistence mutations a
 Zero Domain Knowledge: CRUDEngine operates strictly on structural metadata contracts (__slug_config__, using keys such as source_field and slug_field) without awareness of domain entities (such as plants, articles, products, or doctors) or business semantics.
 
 Standalone Storage Reliability: The CRUD and persistence layer remains 100% operational without any dependency on external AI services.
+
+
+### Stage 6.3: Infrastructure & Persistence Integration
+
+#### Chain of Responsibility
+Domain (ArticleRepository) 
+  ▲
+  │ (implements)
+Infrastructure (CRUDArticleRepository)
+  │ (invokes async via _run_sync)
+UniversalCRUDEngine (UniversalCRUDEngineProtocol)
+  │ (delegates)
+PersistenceProviderProtocol
+  ├── InMemoryPersistenceProvider
+  └── SQLitePersistenceProvider
+
+#### Key Architectural Principles
+1. **Engine Target:** `CRUDArticleRepository` работает строго через `UniversalCRUDEngineProtocol` (`get`, `create`, `update`, `delete`, `list`).
+2. **Engine Preservation:** Исходный `CRUDEngine` остаётся отдельным фасадом и не модифицируется под требования репозиториев.
+3. **Application Isolation:** Слой приложений (`Application Layer`) зависит исключительно от интерфейсов домена (`ArticleRepository`) и не имеет прямых импортов из `ai_framework.crud`.
+4. **Adapter Boundary:** `CRUDArticleRepository` случит явной границей (Boundary) между синхронным доменным кодом и асинхронным CRUD runtime.

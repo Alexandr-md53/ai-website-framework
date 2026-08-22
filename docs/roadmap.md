@@ -18,14 +18,11 @@ Phase 1–4: Initial Framework Core & Generator (Завершено ✅)
   [x] 5.3.6 CRUD Engine & Slug Integration (CRUD_SLG_01) — Completed (commit dd543f7)
 
 # Phase 6: Application & Domain Layer (👉 ТЕКУЩИЙ ЭТАП ⏳)
-[ ] 6.1 Domain Model Contract (Stage 1)
-  [ ] Pure Domain Entities (Entity, Metadata, Fields, Lifecycle, Validation)
-  [ ] Zero External Dependencies Rule (Flask / DB / Framework-agnostic)
-[ ] 6.2 Application Service Layer (Stage 2)
-  [ ] High-level Application Workflows over CRUDEngine Facade
-[ ] 6.3 Domain & Application Events (Stage 3)
-  [ ] Event contracts: EntityCreated, EntityUpdated, EntityDeleted, SlugChanged
-[ ] 6.4 Application Pipeline (Stage 4)
+
+- [x] **6.1 Domain Layer** 🟢 (Entities, Value Objects, Domain Events, Repository Contracts)
+- [x] **6.2 Application Layer** 🟢 (Use Cases, DTOs, Unit Tests)
+- [x] **6.3 Infrastructure Adapters** 🟢 (CRUDArticleRepository -> UniversalCRUDEngine -> PersistenceProvider)
+- [x] **6.4 Application Pipeline** 🟢 NEXT (Request/Response Pipeline contract & execution flow)
   [ ] End-to-end Request → Application Service → CRUDEngine → Event → Response
 
 # Phase 7: Universal Admin Panel Engine (Будущий этап 🚀)
