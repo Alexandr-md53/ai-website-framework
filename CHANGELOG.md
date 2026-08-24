@@ -109,3 +109,23 @@ Future releases will build on this Core without changing its architectural princ
 - Built-in validators fully covered
 - Integration tests completed
 - Production Ready
+
+## [Unreleased] — 2026-08-24
+
+### Added
+- **Universal Settings Manager (`ai_framework.settings`)**:
+  - `SettingsProviderProtocol`: абстрактный контракт хранилища настроек (`get`, `set`, `delete`, `get_all`, `has`).
+  - `InMemorySettingsProvider`: базовая in-memory реализация провайдера настроек.
+  - `SettingsManager`: оркестратор настроек с поддержкой пространств имён (`namespace`), дефолтных значений (`defaults`), агрегированного `list()` и сброса к значениям по умолчанию (`reset()`).
+  - `SettingsUIBridge`: адаптер для генерации UI-форм из настроек (`FormViewModel`) с авто-маппингом типов (`bool` → `checkbox`, `int`/`float` → `number`, `str` → `text`) и безопасным сохранением POST-данных (`handle_submit`).
+- **Media UI Bridge (`ai_framework.crud_ui.media_bridge`)**:
+  - `MediaUIBridge`: адаптер связи `FieldWidgetType.FILE` с `AssetManagerProtocol` для обработки загрузок (`handle_upload`), разрешения и презентации ассетов (`resolve_asset`, `present_asset`).
+
+### Changed / Architectural Alignment
+- **Web Integration Layer**:
+  - Модуль `web.py` (`HTTPRequestContext`, `CrudWebController`, `WebResponseAdapter`) официально зафиксирован как опорный интеграционный слой в рамках **Phase 7.2 (Dynamic CRUD UI)** без выделения в отдельную фазу `7.4`.
+  - Документация и тестовое покрытие актуализированы под канонический вид `ROADMAP.md`.
+
+### Testing & Regression
+- Покрыты unit- и интеграционными тестами модули `tests/settings/` (`test_settings_provider`, `test_settings_manager`, `test_settings_ui_bridge`).
+- Достигнут **100% GREEN** регрессионный прогон по пакетам `tests/settings` и `tests/crud_ui`.
