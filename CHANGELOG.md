@@ -129,3 +129,13 @@ Future releases will build on this Core without changing its architectural princ
 ### Testing & Regression
 - Покрыты unit- и интеграционными тестами модули `tests/settings/` (`test_settings_provider`, `test_settings_manager`, `test_settings_ui_bridge`).
 - Достигнут **100% GREEN** регрессионный прогон по пакетам `tests/settings` и `tests/crud_ui`.
+
+## [Phase 8] - 2026-08-25
+
+### Added
+- Core Security domain entities: `Permission`, `Role`, `Identity`, `SecurityContext`.
+- Extensible `AuthenticationService` supporting `UsernamePasswordCredentials`, `TokenCredentials`, and `InMemoryAuthenticationProvider`.
+- Fine-grained RBAC authorization via `RoleBasedAuthorizationProvider` with Default Deny semantics.
+- `AuthorizationService` supporting short-circuiting OR-evaluation across composite providers.
+- Web integration layer (`SecurityWebGuard`, `BearerTokenExtractor`) mapping HTTP headers to `SecurityContext` with HTTP 401/403 protection.
+- `SecuredViewModelAdapter` for non-mutating presentation-layer action filtering based on context permissions.
