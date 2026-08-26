@@ -39,7 +39,26 @@ Phase 1–4: Initial Framework Core & Generator (Завершено ✅)
 - [x] Stage 8.4: Web & Admin UI Security Integration (SecurityWebGuard, BearerTokenExtractor, SecuredViewModelAdapter)
 
 
-# Phase 9: Business Showcases (👉 ТЕКУЩИЙ ЭТАП ⏳)
-[ ] 9.1 Plant Nursery Showcase
-[ ] 9.2 Cafe Showcase
-[ ] 9.3 Service / Lawyer Showcase
+
+## [x] Phase 9 — Business Showcases (✅ COMPLETED / FROZEN)
+
+**Цель:** Подтверждение универсальности `ai_framework` на трех независимых бизнес-доменах без загрязнения ядра доменной логикой.
+
+- [x] **Phase 9.1 — Plant Nursery Showcase** (16 tests GREEN)
+  - Иерархические категории товаров
+  - Галерея медиа-контента
+  - Управление остатками (Inventory) и критерии поиска
+- [x] **Phase 9.2 — Cafe Showcase** (12 tests GREEN)
+  - Спецификация канонических Dynamic Forms / Admin UI (Phase 7)
+  - Жизненный цикл статусов (`DRAFT` → `ACTIVE` → `ARCHIVED`)
+  - Динамические модификаторы цены
+  - Ролевой доступ (RBAC: Barista / Manager)
+- [x] **Phase 9.3 — Lawyer / Service Showcase** (9 tests GREEN)
+  - Граф связей M2M (`Attorney ↔ PracticeArea ↔ Service`)
+  - Сложная бизнес-валидация заявок (`ConsultationRequestValidator`)
+  - Изоляция данных по ролям (`ATTORNEY` vs `MANAGING_PARTNER`)
+
+**Итоги Phase 9:**
+- Всего тестов витрин: **37 / 37 GREEN**
+- Регрессия проекта: **444 / 444 GREEN** (0 failures, 100% pass)
+- Архитектурная гипотеза подтверждена: `ai_framework` полностью изолирован от `showcases`.

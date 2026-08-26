@@ -4,138 +4,78 @@ All notable changes to AI Website Framework are documented in this file.
 
 The project follows semantic versioning.
 
-# Changelog
-
-All notable changes to AI Website Framework are documented in this file.
-
-The project follows semantic versioning.
-
 ---
 
-## v1.1.0 — CRUD Engine & Slug Integration (commit dd543f7)
+## [Phase 9] — Business Showcases (2026-08-26)
 
 ### Added
-- **`CRUDEngine` Facade**: High-level schema-aware facade layer orchestrating persistence and slug resolution.
-- **`UniversalCRUDEngine`**: Low-level storage and CRUD persistence layer.
-- **`SlugGenerator` & `AsyncSlugOrchestrator`**: Asynchronous slug generation, validation, and collision resolution.
-- **Explicit Collision Contracts**:
-  - Explicit custom slug collisions strictly raise `ValueError`.
-  - Auto-generated slug collisions resolve via iterative numerical suffixes (`slug-2`, `slug-3`).
+- **Plant Nursery Showcase (16 tests GREEN)**: Иерархические категории товаров, галерея медиа-контента, управление остатками (Inventory) и критерии поиска.
+- **Cafe Showcase (12 tests GREEN)**: Спецификация канонических Dynamic Forms / Admin UI, жизненный цикл статусов (`DRAFT` → `ACTIVE` → `ARCHIVED`), динамические модификаторы цены, RBAC.
+- **Lawyer Showcase (9 tests GREEN)**: M2M-граф связей (`Attorney ↔ PracticeArea ↔ Service`), сложная бизнес-валидация заявок (`ConsultationRequestValidator`), ролевая изоляция данных (`ATTORNEY` vs `MANAGING_PARTNER`).
 
-### Quality
-- 100% PASS on full pytest regression suite (including integration tests for `CRUDEngine` + `AsyncSlugOrchestrator`).
-- Clean working tree locked at commit `dd543f7`.
+### Verified & Quality
+- **Архитектурное доказательство**: Доказана универсальность `ai_framework` поверх 3 кардинально разных бизнес-доменов без загрязнения ядра доменным кодом.
+- **Полная изоляция**: Пакет `ai_framework` не имеет обратных импортов или зависимостей от `showcases`.
+- **100% Регрессия**: **444 / 444 тестов GREEN** (407 тестов ядра + 37 тестов витрин).
 
 ---
 
-## v1.0.0 — Validation Engine
-...
----
-
-# Version 0.1.0 — Core Foundation
-
-Release status:
-
-```text
-Foundation Release
-```
-
-## Overview
-
-The first architectural milestone of AI Website Framework.
-
-This release establishes the Framework Core and provides the fundamental infrastructure required for future Framework components.
-
-## Added
-
-### Core Architecture
-
-- Core package structure
-- Framework documentation
-- Dependency rules
-- Module responsibility definitions
-
-### Core Modules
-
-- Exceptions
-- Contracts
-- Registry
-- Settings
-- Component Loader
-- Version
-
-### Testing
-
-Implemented automated tests for:
-
-- Registry
-- Contracts
-- Settings
-- Loader
-- Version
-
-Result:
-
-```text
-26 tests passing
-```
-
-## Notes
-
-This release intentionally does not include business logic.
-
-Its purpose is to establish a stable and extensible foundation for all future Framework modules.
-
-Future releases will build on this Core without changing its architectural principles.
-
-## v1.0.0 — Validation Engine
+## [Phase 8] — Security & Access Control (2026-08-25)
 
 ### Added
+- Доменные сущности безопасности: `Permission`, `Role`, `Identity`, `SecurityContext`.
+- Расширяемый `AuthenticationService` с поддержкой `UsernamePasswordCredentials`, `TokenCredentials` и `InMemoryAuthenticationProvider`.
+- Мелкозернистая RBAC-авторизация через `RoleBasedAuthorizationProvider` по принципу Default Deny.
+- `AuthorizationService` с поддержкой короткого замыкания (short-circuiting OR-evaluation) для составных провайдеров.
+- Веб-интеграция (`SecurityWebGuard`, `BearerTokenExtractor`) для маппинга HTTP-заголовков в `SecurityContext` с защитой 401/403.
+- `SecuredViewModelAdapter` для безопасной фильтрации действий в слое presentation без мутации данных.
 
-- ValidationEngine
-- ValidationContext
-- ValidationResult
-- ValidationError
-- Built-in validators
-- Schema compiler
-- Dependency Injection
-- validate()
-- validate_entity()
+---
 
-### Quality
-
-- 121 automated tests
-- Public API fully tested
-- Built-in validators fully covered
-- Integration tests completed
-- Production Ready
-
-## [Unreleased] — 2026-08-24
+## [Phase 7] — Settings Manager & Media UI Bridge (2026-08-24)
 
 ### Added
 - **Universal Settings Manager (`ai_framework.settings`)**:
-  - `SettingsProviderProtocol`: абстрактный контракт хранилища настроек (`get`, `set`, `delete`, `get_all`, `has`).
-  - `InMemorySettingsProvider`: базовая in-memory реализация провайдера настроек.
-  - `SettingsManager`: оркестратор настроек с поддержкой пространств имён (`namespace`), дефолтных значений (`defaults`), агрегированного `list()` и сброса к значениям по умолчанию (`reset()`).
-  - `SettingsUIBridge`: адаптер для генерации UI-форм из настроек (`FormViewModel`) с авто-маппингом типов (`bool` → `checkbox`, `int`/`float` → `number`, `str` → `text`) и безопасным сохранением POST-данных (`handle_submit`).
+  - `SettingsProviderProtocol`: контракт хранилища настроек (`get`, `set`, `delete`, `get_all`, `has`).
+  - `InMemorySettingsProvider`: in-memory реализация провайдера настроек.
+  - `SettingsManager`: оркестратор настроек с поддержкой `namespace`, `defaults` и сброса к значениям по умолчанию.
+  - `SettingsUIBridge`: адаптер для генерации UI-форм из настроек с авто-маппингом типов и обработкой submit.
 - **Media UI Bridge (`ai_framework.crud_ui.media_bridge`)**:
-  - `MediaUIBridge`: адаптер связи `FieldWidgetType.FILE` с `AssetManagerProtocol` для обработки загрузок (`handle_upload`), разрешения и презентации ассетов (`resolve_asset`, `present_asset`).
+  - `MediaUIBridge`: адаптер связи `FieldWidgetType.FILE` с `AssetManagerProtocol` для загрузки и разрешения ассетов.
 
-### Changed / Architectural Alignment
-- **Web Integration Layer**:
-  - Модуль `web.py` (`HTTPRequestContext`, `CrudWebController`, `WebResponseAdapter`) официально зафиксирован как опорный интеграционный слой в рамках **Phase 7.2 (Dynamic CRUD UI)** без выделения в отдельную фазу `7.4`.
-  - Документация и тестовое покрытие актуализированы под канонический вид `ROADMAP.md`.
+### Changed
+- Модуль `web.py` (`HTTPRequestContext`, `CrudWebController`, `WebResponseAdapter`) зафиксирован как опорный интеграционный слой в рамках Phase 7.2 (Dynamic CRUD UI).
 
-### Testing & Regression
-- Покрыты unit- и интеграционными тестами модули `tests/settings/` (`test_settings_provider`, `test_settings_manager`, `test_settings_ui_bridge`).
-- Достигнут **100% GREEN** регрессионный прогон по пакетам `tests/settings` и `tests/crud_ui`.
+---
 
-## [Phase 8] - 2026-08-25
+## v1.1.0 — CRUD Engine & Slug Integration
 
 ### Added
-- Core Security domain entities: `Permission`, `Role`, `Identity`, `SecurityContext`.
-- Extensible `AuthenticationService` supporting `UsernamePasswordCredentials`, `TokenCredentials`, and `InMemoryAuthenticationProvider`.
-- Fine-grained RBAC authorization via `RoleBasedAuthorizationProvider` with Default Deny semantics.
-- `AuthorizationService` supporting short-circuiting OR-evaluation across composite providers.
-- Web integration layer (`SecurityWebGuard`, `BearerTokenExtractor`) mapping HTTP headers to `SecurityContext` with HTTP 401/403 protection.
-- `SecuredViewModelAdapter` for non-mutating presentation-layer action filtering based on context permissions.
+- **`CRUDEngine` Facade**: Высокоуровневый слой оркестрации персистенции и резолюции слагов.
+- **`UniversalCRUDEngine`**: Низкоуровневый слой CRUD-персистенции.
+- **`SlugGenerator` & `AsyncSlugOrchestrator`**: Асинхронная генерация слагов и разрешение коллизий.
+- **Explicit Collision Contracts**:
+  - Ручные коллизии строго вызывают `ValueError`.
+  - Авто-сгенерированные коллизии разрешаются суффиксами (`slug-2`, `slug-3`).
+
+---
+
+## v1.0.0 — Validation Engine
+
+### Added
+- `ValidationEngine`, `ValidationContext`, `ValidationResult`, `ValidationError`.
+- Встроенный набор валидаторов и компилятор схем.
+- Поддержка Dependency Injection.
+- Публичный API (`validate()`, `validate_entity()`).
+
+### Quality
+- 121 автоматический тест, 100% покрытие встроенных валидаторов.
+
+---
+
+## v0.1.0 — Core Foundation
+
+### Added
+- Базовая структура пакета `ai_framework`.
+- Базовые модули: `Exceptions`, `Contracts`, `Registry`, `Settings`, `Component Loader`, `Version`.
+- Инициализировано 26 базовых тестов ядра.

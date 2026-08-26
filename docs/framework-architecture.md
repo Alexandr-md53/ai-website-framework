@@ -1,46 +1,67 @@
-Обновлённая каноническая версия файла docs/framework-architecture.md (v1.2) с учётом всех уточнений по Zero Domain Knowledge, __slug_config__ и фасадной оркестрации:
-
-Markdown
 # High-Level Runtime Architecture
 
 **Document:** `framework-architecture.md`  
-**Status:** Approved (v1.2)  
-**Version:** 1.2  
+**Status:** Approved (v1.3 — Phase 9 Frozen)  
+**Version:** 1.3  
 
-The Framework consists of operational runtime engines and orchestration layers that handle data flow, persistence, slug management, and AI content generation as independent, decoupled subsystems.
+The Framework consists of operational runtime engines, security boundaries, and presentation orchestration layers that handle data flow, persistence, slug management, access control, dynamic settings, and AI generation as independent, decoupled subsystems.
 
 ```text
-                     Application / Domain Layer
-                                 │
-                     ┌───────────┴───────────┐
-                     │                       │
-                     ▼                       ▼
-               CRUD Subsystem          AI Pipeline Subsystem
-                     │                       │
-           ┌───────────────────┐   ┌───────────────────┐
-           │ CRUDEngine Facade │   │ AIService Orch.   │
-           └─────────┬─────────┘   └─────────┬─────────┘
-     ┌───────────────┼───────────────┐       │
-     ▼               ▼               ▼       ▼
-Validation      UniversalCRUD     AsyncSlug AI Provider
-  Engine        (Low-Level)     Orchestrator Subsystem
-                     │
-                     ▼
-            PersistenceProvider
-             (In-Memory/SQLite)
-1. Core Framework Subsystems
-1.1 CRUD & Persistence Subsystem (ai_framework.crud)
-CRUDEngine (Facade Layer): High-level schema-aware facade layer separating low-level storage operations from domain-level schema logic (__slug_config__). Orchestrates data validation via ValidationEngine, persistence via UniversalCRUDEngine, and slug lifecycle resolution via AsyncSlugOrchestrator.
+                           Domain Showcases Layer (`showcases/`)
+                   (Plant Nursery  |  Cafe  |  Lawyer Showcase)
+                                      │
+                   ┌──────────────────┴──────────────────┐
+                   ▼                                     ▼
+        Web / Presentation Layer               Application / Domain Layer
+      (CrudWebController, Guards)                        │
+                   │                                     │
+    ┌──────────────┼───────────────────────┬─────────────┴─────────────┐
+    ▼              ▼                       ▼                           ▼
+Security      Settings & UI             CRUD Subsystem           AI Pipeline Subsystem
+Subsystem       Subsystem                  │                           │
+(RBAC/Guard) (SettingsManager/Bridges)  ┌──┴────────────────┐      ┌───┴───────────────┐
+                                        │ CRUDEngine Facade │      │ AIService Orch.   │
+                                        └────────┬──────────┘      └───┬───────────────┘
+                                 ┌───────────────┼───────────────┐     │
+                                 ▼               ▼               ▼     ▼
+                            Validation      UniversalCRUD     AsyncSlug AI Provider
+                              Engine         (Low-Level)    Orchestrator Subsystem
+                                                 │
+                                                 ▼
+                                        PersistenceProvider
+                                         (In-Memory/SQLite)
 
-ValidationEngine: Execution boundary for schema validation. Enforces data integrity prior to state mutations (Validation-First principle).
+                                         1. Core Framework Subsystems (ai_framework)
+1.1 CRUD & Persistence Subsystem (ai_framework.crud)
+CRUDEngine (Facade Layer): High-level schema-aware facade separating low-level storage operations from schema metadata (__slug_config__). Orchestrates data validation via ValidationEngine, persistence via UniversalCRUDEngine, and slug lifecycle via AsyncSlugOrchestrator.
+
+ValidationEngine: Execution boundary for schema validation enforcing data integrity prior to state mutations (Validation-First principle).
 
 UniversalCRUDEngine (Low-Level CRUD): Pure storage abstraction providing universal CRUD operations across backend persistence providers without domain or slug awareness.
 
-AsyncSlugOrchestrator (Slug Service): Asynchronous slug manager handling custom slug validation, auto-generation from mapped source fields defined in __slug_config__, and iterative collision resolution (-2, -3).
+AsyncSlugOrchestrator: Asynchronous slug manager handling custom slug validation, auto-generation from mapped source fields, and iterative collision resolution (-2, -3).
 
-PersistenceProvider: Storage backend contract and implementation (In-Memory, SQLite, Relational DBs).
+PersistenceProvider: Storage backend contract and implementation (InMemoryPersistenceProvider, SQLitePersistenceProvider).
 
-1.2 AI Pipeline Subsystem (ai_framework.ai)
+1.2 Security & Access Control Subsystem (ai_framework.security)
+Core Entities: Domain-agnostic primitives for security (Permission, Role, Identity, SecurityContext).
+
+AuthenticationService: Extensible auth provider handling credentials (UsernamePasswordCredentials, TokenCredentials) and token resolution.
+
+AuthorizationService: Fine-grained authorization runtime supporting RoleBasedAuthorizationProvider with Default Deny semantics and short-circuiting OR-evaluation across composite providers.
+
+Web & Presentation Guards: SecurityWebGuard and BearerTokenExtractor mapping HTTP headers to SecurityContext with HTTP 401/403 protection; SecuredViewModelAdapter for non-mutating action filtering in presentation layers.
+
+1.3 Settings & UI Bridge Subsystem (ai_framework.settings, ai_framework.crud_ui)
+Settings Infrastructure: SettingsManager supporting namespacing, default fallbacks, and storage contracts (SettingsProviderProtocol).
+
+SettingsUIBridge: Adapter translating settings schemas into dynamic form view models (FormViewModel) with automatic widget mapping and POST handling.
+
+MediaUIBridge: Presentation-to-asset mapping connecting FieldWidgetType.FILE widgets to AssetManagerProtocol for secure asset upload, resolution, and presentation.
+
+Web Integration Layer (ai_framework.web): HTTPRequestContext, CrudWebController, and WebResponseAdapter delivering standardized HTTP handling over framework components.
+
+1.4 AI Pipeline Subsystem (ai_framework.ai)
 Prompt Pipeline: Assembles structured prompt components, system instructions, and dynamic context parameters.
 
 AIService (Orchestrator): Manages AI execution lifecycle, provider routing, fallback policies, and retry strategies.
@@ -50,31 +71,48 @@ StructuredOutputParser: Validates and converts LLM output into strictly structur
 AI Provider Subsystem: Low-level provider protocol abstraction (OpenRouter protocol, caching, resilience, rate-limiting).
 
 2. Architectural Rules & Subsystem Isolation
-Decoupled Subsystems: The CRUD Subsystem and AI Pipeline Subsystem operate as independent architectural branches. Basic CRUD operations do not implicitly invoke AI services. Orchestration between storage and AI generation occurs exclusively at the Application / Domain Layer.
+Zero Domain Knowledge: ai_framework operates strictly on structural contracts, interfaces, and metadata schemas (__slug_config__, generic RBAC roles, provider protocols) without imports or awareness of specific domain entities (plants, menu items, legal services).
 
-Validation-First: Mutation requests are validated before persistence mutations are performed. Slug resolution and uniqueness checks are orchestrated by CRUDEngine through AsyncSlugOrchestrator.
+Decoupled Subsystems: CRUD operations, Security enforcement, Settings management, and AI execution operate as independent branches. Basic CRUD does not implicitly invoke AI services or mandate specific Auth providers.
 
-Zero Domain Knowledge: CRUDEngine operates strictly on structural metadata contracts (__slug_config__, using keys such as source_field and slug_field) without awareness of domain entities (such as plants, articles, products, or doctors) or business semantics.
+Validation-First & Security-First: All state mutations are validated via ValidationEngine and checked against SecurityContext prior to persistence operations.
 
-Standalone Storage Reliability: The CRUD and persistence layer remains 100% operational without any dependency on external AI services.
+Standalone Storage Reliability: The core framework and persistence layers remain 100% operational without dependency on external AI APIs or specific frontend components.
 
-
-### Stage 6.3: Infrastructure & Persistence Integration
-
-#### Chain of Responsibility
-Domain (ArticleRepository) 
-  ▲
-  │ (implements)
-Infrastructure (CRUDArticleRepository)
-  │ (invokes async via _run_sync)
+3. Infrastructure & Repository Pattern Integration
+Chain of Responsibility
+Plaintext
+Domain Repository Interface (e.g., ArticleRepository)
+        ▲
+        │ (implements)
+Infrastructure Repository (e.g., CRUDArticleRepository)
+        │ (invokes async execution)
 UniversalCRUDEngine (UniversalCRUDEngineProtocol)
-  │ (delegates)
-PersistenceProviderProtocol
-  ├── InMemoryPersistenceProvider
-  └── SQLitePersistenceProvider
+        │ (delegates)
+PersistenceProviderProtocol (InMemory / SQLite)
+Engine Target: Infrastructure repositories interact with UniversalCRUDEngineProtocol for standard CRUD primitives (get, create, update, delete, list).
 
-#### Key Architectural Principles
-1. **Engine Target:** `CRUDArticleRepository` работает строго через `UniversalCRUDEngineProtocol` (`get`, `create`, `update`, `delete`, `list`).
-2. **Engine Preservation:** Исходный `CRUDEngine` остаётся отдельным фасадом и не модифицируется под требования репозиториев.
-3. **Application Isolation:** Слой приложений (`Application Layer`) зависит исключительно от интерфейсов домена (`ArticleRepository`) и не имеет прямых импортов из `ai_framework.crud`.
-4. **Adapter Boundary:** `CRUDArticleRepository` случит явной границей (Boundary) между синхронным доменным кодом и асинхронным CRUD runtime.
+Engine Preservation: CRUDEngine remains a high-level orchestration facade and is not modified to fit individual domain repository implementations.
+
+Adapter Boundary: Repositories serve as explicit boundaries between synchronous domain logic and asynchronous CRUD runtime.
+
+4. Business Showcases Layer (showcases/)
+The framework's universality and zero-leakage principle are proven by three isolated reference showcases built on top of ai_framework:
+
+Plant Nursery Showcase: Validates multi-level category hierarchies, media asset resolution (MediaUIBridge), inventory tracking, and search metadata.
+
+Cafe Showcase: Validates dynamic admin form generation (SettingsUIBridge), status lifecycles (DRAFT → ACTIVE → ARCHIVED), price modifiers, and menu item RBAC.
+
+Lawyer Showcase: Validates Many-to-Many entity graphs (Attorney ↔ PracticeArea ↔ Service), complex multi-field validation engines, and role-based data isolation (ATTORNEY vs MANAGING_PARTNER).
+
+
+---
+
+### Ключевые изменения относительно v1.2
+
+* Добавлен **раздел 1.2 (Security Subsystem)**: отражены RBAC, `SecurityContext`, `AuthorizationService` и веб-гарды.
+* Добавлен **раздел 1.3 (Settings & UI Bridge Subsystem)**: зафиксированы `SettingsManager`, `SettingsUIBridge`, `MediaUIBridge` и `web.py`.
+* Добавлен **раздел 4 (Business Showcases Layer)**: задокументированы результаты **Phase 9** и паттерны, вынесенные в `showcases/`.
+* Обновлена **диаграмма архитектуры**: добавлена связка слоя витрин с веб-контроллерами, безопасностью и настройками.
+
+<FollowUp label="Хотите зафиксировать этот файл в git и свериться с ROADMAP.md для следующе
