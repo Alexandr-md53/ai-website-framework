@@ -2,8 +2,10 @@ from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional
 import sqlite3
 
+from ai_framework.crud.contracts import PersistenceProviderProtocol
 
-class SQLitePersistenceProvider:
+
+class SQLitePersistenceProvider(PersistenceProviderProtocol):
     """Провайдер персистентности для работы с SQLite БД."""
 
     def __init__(self, db_path: str = ":memory:") -> None:

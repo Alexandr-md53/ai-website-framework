@@ -215,6 +215,3 @@ class UniversalCRUDEngine:
                 params={"details": str(e)},
             )
             return CRUDResult(success=False, data=None, errors=[err])
-
-
-from ai_framework.crud.crud_engine import CRUDEngine
