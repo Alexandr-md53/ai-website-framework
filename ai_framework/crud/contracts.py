@@ -1,7 +1,6 @@
-from dataclasses import dataclass
-import dataclasses
-from typing import Any, Dict, List, Optional, Protocol
 from dataclasses import dataclass, field
+import dataclasses
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -19,7 +18,7 @@ class CRUDError:
     code: str
     message_key: str
     field: Optional[str] = None
-    params: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    params: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -40,6 +39,7 @@ class CRUDResult:
     operation: str = "read"  # новое поле, по умолчанию "read"
 
 
+@runtime_checkable
 class PersistenceProviderProtocol(Protocol):
     """Контракт persistence layer для Universal CRUD Engine."""
 
@@ -83,6 +83,7 @@ class PersistenceProviderProtocol(Protocol):
     ) -> bool: ...
 
 
+@runtime_checkable
 class UniversalCRUDEngineProtocol(Protocol):
     """Публичный контракт Universal CRUD Engine."""
 
