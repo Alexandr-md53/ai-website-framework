@@ -1,24 +1,8 @@
 import inspect
 from typing import Any, Optional
-from ai_framework.crud.contracts import CRUDContext
 
-try:
-    from ai_framework.services.slug import SlugGenerator, DefaultCollisionResolver
-except ImportError:
-    try:
-        from ai_framework.services.slug.generator import (
-            SlugGenerator,
-            DefaultCollisionResolver,
-        )
-    except ImportError:
-        try:
-            from ai_framework.slug.generator import (
-                SlugGenerator,
-                DefaultCollisionResolver,
-            )
-        except ImportError:
-            SlugGenerator = None
-            DefaultCollisionResolver = None
+from ai_framework.crud.contracts import CRUDContext
+from ai_framework.services.slug import SlugGenerator, DefaultCollisionResolver
 
 
 class AsyncSlugOrchestrator:
@@ -38,17 +22,13 @@ class AsyncSlugOrchestrator:
     ):
         if slug_generator is not None:
             self.slug_generator = slug_generator
-        elif SlugGenerator is not None:
-            self.slug_generator = SlugGenerator()
         else:
-            self.slug_generator = None
+            self.slug_generator = SlugGenerator()
 
         if collision_resolver is not None:
             self.collision_resolver = collision_resolver
-        elif DefaultCollisionResolver is not None:
-            self.collision_resolver = DefaultCollisionResolver()
         else:
-            self.collision_resolver = None
+            self.collision_resolver = DefaultCollisionResolver()
 
         self.persistence_provider = persistence_provider
         self.default_source_field = default_source_field

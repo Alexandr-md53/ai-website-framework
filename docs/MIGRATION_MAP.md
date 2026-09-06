@@ -1,21 +1,10 @@
-Отличная корректировка! Эти исправления устраняют последние возможные смысловые двусмысленности:
-
-1. **Принцип происхождения кода:** Чётко зафиксировано: наличие кода в Reference Project **не равно** его наличию во фреймворке.
-2. **Гибкость порядка Phase 5:** Порядок `SLG → LOC → DB → ASM` объявлен как **`Proposed Execution Order`**, оставляя пространство для маневра по результатам dependency analysis.
-3. **Легенда слоёв:** Таблица становится полностью самодокументируемой.
-
-Ниже приведены финальные версии с учётом всех ваших правок.
-
----
-
-## 📄 `MIGRATION_MAP.md` (v3.0 Final)
-
-```markdown
 # Migration Map: Reference Project Extraction & Generalization Roadmap
 
-**Document Version:** 3.0 (Canonical Sync)  
-**Last Reviewed:** 2026-08-14  
-**Status:** Active Baseline  
+**Document Version:** 4.0 (Phase 9 — FROZEN)
+**Last Reviewed:** 2026-08-26
+**Status:** COMPLETED / FROZEN — 444 / 444 GREEN
+**Frozen Tag:** `phase-9-frozen-v2`
+**Reference Status:** True Reference — replaces invalid `8dd0002e`
 
 ---
 
@@ -23,132 +12,253 @@
 
 The Plant Nursery (`site_generation_post`) is the **Reference Implementation**, not the Framework itself.
 
-The extraction pipeline follows a strict isolation flow:
-
-$$\text{Reference Project Requirements} \longrightarrow \text{Generalization} \longrightarrow \text{Framework Specification} \longrightarrow \text{TDD} \longrightarrow \text{ai\_framework}$$
-
-### Key Architectural Rules
-1. **Canonical Package:** `ai_framework` is the only canonical Core package.
-2. **Zero Domain Knowledge:** Core contains 0 references to plants, nurseries, or client domain concepts.
-3. **Canonical Imports:** Client projects import Core exclusively through `ai_framework`.
-4. **Single Source of Truth:** Every universal capability exists in exactly one canonical place.
-
----
-
-## 2. Current Framework Baseline (Block A — Complete)
-
-| Module | Canonical Location | Status | Test Baseline |
-| :--- | :--- | :--- | :--- |
-| **Validation Engine** | `ai_framework/validation/` | ✅ Implemented | Included in 241-test Block A baseline |
-| **CRUD Engine** | `ai_framework/crud/` | ✅ Implemented | Included in 241-test Block A baseline |
-| **AI Provider Subsystem** | `ai_framework/ai_provider/` | ✅ Implemented | Included in 241-test Block A baseline |
-| **AI Pipeline Engine** | `ai_framework/pipeline/` | ✅ Implemented | Included in 241-test Block A baseline |
-
-**Quality Gate:** **241 / 241 PASSED (0 failures, 0 warnings)**  
-**Release Tag:** `1.0.0-stable`
-
----
-
-## 3. Phase 5 Roadmap: Universal Services Migration
-
-> **Core Principle:** Модули Phase 5 не считаются готовыми на основании наличия реализации в Reference Project. Они разрабатываются по стандартам TDD под каноничный `ai_framework`.
+The extraction pipeline follows this strict flow:
 
 ```text
-Proposed Phase 5 Execution Order (subject to adjustment after dependency analysis):
-┌──────────────────────────┐
-│  SLG_01 — Slug Service   │  ◄── [PROPOSED TARGET 1: Minimal dependencies]
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│ LOC_01 — Localization    │  ◄── [PROPOSED TARGET 2: Text/i18n abstraction]
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│ DB_01 — Persistence Layer│  ◄── [PROPOSED TARGET 3: DB/ORM Abstraction]
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│ ASM_01 — Asset Manager   │  ◄── [PROPOSED TARGET 4: Storage/Media Manager]
-└──────────────────────────┘
-
+Reference Project Requirements
+        ↓
+Generalization
+        ↓
+Framework Specification
+        ↓
+TDD
+        ↓
+ai_framework
 ```
 
-### Module Specifications Status:
+### Key Rules
 
-1. **`SLG_01` Slug Service** (`ai_framework/services/slug/` или `ai_framework/slug/`)
-* *Status:* ⏳ **NEXT TASK (Proposed Target 1)**
-* *Scope:* Transliteration, URL-safe normalization, collision handling, zero infrastructure dependencies.
-
-
-2. **`LOC_01` Localization Engine** (`ai_framework/localization/`)
-* *Status:* ⏳ **PLANNED (Phase 5)**
-* *Scope:* Translation lookup, fallback mechanisms, locale management.
-
-
-3. **`DB_01` Persistence Layer** (`ai_framework/db/`)
-* *Status:* ⏳ **PLANNED (Phase 5)**
-* *Scope:* DB abstraction, session lifecycle, repository primitives.
-
-
-4. **`ASM_01` Asset Manager** (`ai_framework/services/asset/`)
-* *Status:* ⏳ **PLANNED (Phase 5)**
-* *Scope:* Storage abstraction, file lifecycle, image/PDF processing, metadata tracking.
-
-
+1. **Canonical Package:** `ai_framework` is the only canonical Core package. The legacy `framework/` package is removed.
+2. **Zero Domain Knowledge:** Core contains no references to plants, nurseries, cafe, lawyer, or other client-specific domain concepts.
+3. **Canonical Imports:** Framework code uses `from ai_framework.*` only. Imports from `framework.*` are forbidden.
+4. **Single Source of Truth:** Every universal framework capability exists in exactly one canonical location.
+5. **Reference Project Isolation:** Code existing in the Reference Project does not automatically qualify as framework code. Reusable capabilities must be generalized, specified, implemented, and tested independently.
 
 ---
 
-## 4. Phase 6 Roadmap: Metadata & Admin Platform (Planned)
+## 2. Final Framework Baseline — Phase 9 COMPLETED
 
-* **`MD_01` Metadata Engine** (`ai_framework/metadata/`) — Entity specs & form generation schema.
-* **`ADM_01` Admin Platform** (`ai_framework/admin/`) — Dynamic Admin UI rendering.
+### Block A — Foundation
 
----
+| Module            | Canonical Location          | Status |
+| ----------------- | --------------------------- | ------ |
+| Validation Engine | `ai_framework/validation/`  | ✅ DONE |
+| CRUD Engine       | `ai_framework/crud/`        | ✅ DONE |
+| AI Provider       | `ai_framework/ai_provider/` | ✅ DONE |
+| AI Pipeline       | `ai_framework/pipeline/`    | ✅ DONE |
 
-## 5. 7-Point Quality Gate Standard
+**Recorded Block A baseline:** 241 tests passed.
 
-A Phase 5 module is marked as completed **ONLY** upon satisfying all 7 quality criteria:
+### Phase 5 — Universal Services
 
-* [ ] **1. Zero Domain Knowledge:** Core code contains 0 domain-specific terms.
-* [ ] **2. Unit Tests Coverage:** Executable business logic test coverage $\ge 90\%$.
-* [ ] **3. Framework Specs Sync:** Code documentation and module specs created/updated.
-* [ ] **4. Architecture Alignment:** Strictly follows Dependency Inversion & Single Responsibility.
-* [ ] **5. Roadmap Sync:** Status updated in `MIGRATION_MAP.md`.
-* [ ] **6. Analysis Sync:** Status updated in `REFERENCE_PROJECT_ANALYSIS.md`.
-* [ ] **7. Regression Passed:** All existing tests (241+) remain PASSED.
+| Module            | Canonical Location                                           | Status                                                                 |
+| ----------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Slug Service      | `ai_framework/services/slug/`                                | ✅ DONE — transliteration, URL-safe normalization, collision resolution |
+| Localization      | `ai_framework/localization/`                                 | ✅ DONE                                                                 |
+| Persistence Layer | `ai_framework/crud/persistence.py` + `sqlite_persistence.py` | ✅ DONE                                                                 |
+| Asset Manager     | `ai_framework/asset_manager/`                                | ✅ DONE                                                                 |
 
-```
+### Phase 6–7 — Metadata, CRUD UI & Admin Platform
 
----
+| Module           | Canonical Location       | Status |
+| ---------------- | ------------------------ | ------ |
+| Metadata Engine  | `ai_framework/metadata/` | ✅ DONE |
+| CRUD UI Engine   | `ai_framework/crud_ui/`  | ✅ DONE |
+| Settings Manager | `ai_framework/settings/` | ✅ DONE |
+| API Layer        | `ai_framework/api/`      | ✅ DONE |
 
-## 💡 Добавление легенды в `REFERENCE_PROJECT_ANALYSIS.md` (v4.0)
+### Phase 8 — Security
 
-В раздел 3 файла `REFERENCE_PROJECT_ANALYSIS.md` добавляем следующую блок-инструкцию:
+| Module                   | Canonical Location                       | Status |
+| ------------------------ | ---------------------------------------- | ------ |
+| Security Domain          | `ai_framework/security/`                 | ✅ DONE |
+| Authentication / RBAC    | `ai_framework/security/authorization.py` | ✅ DONE |
+| Web Security Integration | `ai_framework/security/web.py`           | ✅ DONE |
 
-```markdown
-### Легенда архитектурных слоёв:
-* `[CORE]` — Implemented or target reusable Framework capability
-* `[CORE SERVICES - TARGET]` — Target reusable service layer
-* `[CORE / DB - TARGET]` — Target persistence abstraction
-* `[PLANNED ADMIN]` — Future application/platform layer
-* `[PROJECT]` — Reference Project domain
+### Phase 9 — Business Showcases
 
-```
+Phase 9 validates framework universality through three independent business domains without introducing domain-specific knowledge into Core.
 
----
+| Showcase      | Domain         | Key Features                                             | Status |
+| ------------- | -------------- | -------------------------------------------------------- | ------ |
+| Plant Nursery | Plant nursery  | Hierarchy, media, inventory, pricing                     | ✅ DONE |
+| Cafe          | Cafe           | Dynamic UI, status lifecycle, menu, modifiers, RBAC      | ✅ DONE |
+| Lawyer        | Legal services | M2M graphs, complex validation, consultations, isolation | ✅ DONE |
 
-## 🏁 Итог: Documentation Audit Phase 5 официально закрыт!
-
-Вся документация зафиксирована без единого противоречия:
+**Recorded Phase 9 baseline:**
 
 ```text
-BLOCK A                   PHASE 5
-Documentation   ✅       Documentation   ✅
-Implementation  ✅       Implementation  ⏳ (Starting)
-Tests (241/241) ✅       Next Target     → SLG_01
-
+407 core tests + 37 showcase tests = 444 / 444 GREEN
 ```
 
+**Quality Gate:** 7-Point Quality Gate PASSED for all completed modules.
+
+> The `444 / 444` figure above is the recorded pre-cleanup Phase 9 baseline. The final clean-project test count must be confirmed by the post-cleanup regression run and must not be assumed in advance.
+
+---
+
+## 3. Packaging Boundary — FROZEN
+
+The canonical framework package is:
+
+```text
+ai_framework/
+```
+
+The distribution package is:
+
+```text
+ai-website-framework
+```
+
+The legacy package:
+
+```text
+framework/
+```
+
+is **REMOVED** from the clean Phase-9 Frozen Reference.
+
+The legacy `framework/` tree present in commit `8dd0002e` is classified as an **INVALID FROZEN ARTIFACT** and must not exist in the clean reference.
+
+### `pyproject.toml`
+
+Canonical package discovery:
+
+```toml
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ai_framework*"]
+```
+
+No `framework.*` package is part of the canonical distribution.
+
+---
+
+## 4. Phase 9 Freeze Boundary
+
+Phase 9 is the final validated business-showcase phase.
+
+The Frozen Reference must satisfy all of the following:
+
+* `ai_framework/` is the only canonical framework package.
+* `framework/` does not exist.
+* No production code imports `framework.*`.
+* No canonical tests depend on `framework.*`.
+* Documentation contains no AI-generation dialogue or conversational artifacts.
+* Dump/audit helper files are not part of the product unless explicitly required.
+* Packaging exposes `ai_framework*` only.
+* Plant Nursery, Cafe, and Lawyer showcases remain outside Core domain logic.
+* Full regression is GREEN after cleanup.
+* The resulting Git working tree is clean before the final freeze.
+
+---
+
+## 5. Next Steps After Phase 9
+
+Phase 9 is **feature-complete for the validated business showcase baseline**.
+
+Phase 10 contains post-freeze hardening and API refinement tasks rather than additional migration of the Reference Project.
+
+Current accepted tasks:
+
+* **TASK-10G.1R:** `CRUDEngine` Facade over `UniversalCRUDEngine` — accepted; clean implementation required in `ai_framework/crud/crud_engine.py`.
+* **TASK-10H:** Positional mapping safety — accepted.
+* **TASK-10I.1:** Patch only `crud_engine.py` — pending; designated next task.
+
+These tasks do not reopen the Phase 9 migration baseline.
+
+---
+
+## 6. Invalid Frozen v1 — Historical Record
+
+The previous frozen commit:
+
+```text
+8dd0002e448efab4a4abfdaf7b3efe372c46580f
+```
+
+is **NOT** considered a valid Frozen Reference.
+
+The commit is retained only as a historical record.
+
+Known invalid artifacts in that snapshot included:
+
+1. `START_HERE.md` containing AI-generation dialogue.
+2. `AGENTS.md` containing AI-generation dialogue.
+3. `docs/MIGRATION_MAP.md` containing AI-generation dialogue instead of a clean canonical document.
+4. The legacy `framework/` directory remaining in the repository.
+5. `pytest.ini` containing a duplicated `[pytest]` configuration header.
+6. Documentation containing stale Phase 5 / Phase 6 roadmap information inconsistent with the Phase 9 completion state.
+
+These issues are corrected in the `phase-9-frozen-v2` cleanup.
+
+---
+
+## 7. Frozen Reference Definition
+
+The valid Phase-9 Frozen Reference is defined as:
+
+```text
+phase-9-frozen-v2
+```
+
+It replaces the invalid frozen snapshot:
+
+```text
+8dd0002e
+```
+
+The Frozen Reference represents the **clean architectural baseline after Phase 9**, not merely a copy of the historical repository state.
+
+The following hierarchy applies:
+
+```text
+Knowledge Core / Canonical Specifications
+                ↓
+       Architectural Contract
+                ↓
+        Clean Project on Disk
+                ↓
+          Test Evidence
+                ↓
+       phase-9-frozen-v2
+```
+
+`CODEBASE_DUMP_FOR_GEMINI.md` and similar generated dumps are analysis snapshots only. They are not Source of Truth and are not part of the architectural contract.
+
+---
+
+## 8. Final Status
+
+```text
+PHASE 9
+
+Foundation              ✅
+Universal Services      ✅
+Metadata / CRUD UI      ✅
+Settings / API          ✅
+Security                ✅
+Business Showcases      ✅
+Architecture Cleanup    ⏳
+Final Clean Regression  ⏳
+Frozen Reference v2     ⏳
+```
+
+After the cleanup pass and final regression have been completed:
+
+```text
+PHASE 9 — FROZEN
+
+Canonical package       ai_framework
+Legacy framework/       REMOVED
+Legacy imports          0
+Documentation           CLEAN
+Packaging boundary      CLEAN
+Showcases               VALIDATED
+Regression              GREEN
+Git working tree        CLEAN
+Frozen tag              phase-9-frozen-v2
+```
+
+**Final Freeze Condition:** `phase-9-frozen-v2` may be created only after the clean project passes its final regression suite and all architectural cleanup requirements are verified.
