@@ -1,3 +1,69 @@
+# AGENTS.md - AI Website Framework - Architecture Model Frozen V2
+
+## Phase 10.1 Status: A1+A2+B2+B1 GREEN - 395 passed
+
+### Dependency Model (official)
+
+```text
+CORE → ENGINE → EXTENSION → SHOWCASE
+
+CORE:
+    - core/
+    - domain/
+    - services/slug/
+    - validation/
+    - crud/contracts.py
+  Rules:
+    ❌ must NOT import api, crud_ui, application, infrastructure, showcases
+    ✅ may import stdlib, core itself, domain primitives
+
+ENGINE:
+    - crud/engine.py (UniversalCRUDEngine)
+    - crud/crud_engine.py (CRUDEngine schema-aware)
+    - crud/persistence.py, sqlite_persistence.py (PersistenceProviderProtocol)
+    - pipeline/
+  Rules:
+    ✅ reads __slug_config__ for schema
+    ✅ implements PersistenceProviderProtocol (runtime_checkable)
+    ❌ must NOT depend on api or showcases
+
+EXTENSION:
+    - api/ (Delivery Adapter)
+    - crud_ui/
+    - application/ (if exists)
+    - infrastructure/ (if exists)
+  Rules:
+    ✅ may depend on CORE and ENGINE via public API (ai_framework.crud import)
+    ❌ must NOT be imported by CORE
+    ❌ must NOT import showcases
+
+SHOWCASE:
+    - showcases/ (or showcase/, examples/)
+  Rules:
+    ✅ MAY depend on framework (CORE+ENGINE+EXTENSION)
+    ❌ FRAMEWORK must NEVER depend on showcase (locked by test_architecture.py)
+
+    Invariants locked by tests
+tests/test_architecture.py:
+test_core_no_forbidden_dependencies
+test_framework_never_depends_on_showcase
+test_crud_boundary_still_respected
+docs/IMPORT_MAP_FROZEN_V2.md: 0 violations frozen
+
+Boundaries (A1)
+ai_framework/crud/**init**.py canonical public API: CRUDContext, CRUDResult, CRUDError, PersistenceProviderProtocol, UniversalCRUDEngine, CRUDEngine, InMemoryPersistenceProvider, SQLitePersistenceProvider
+ai_framework/pipeline/**init**.py single source Engine
+ai_framework/api/**init**.py single source Delivery Adapter
+No application/crud, application/pipeline, application/api duplicates
+
+Baseline
+Code
+395 passed in ~2.8s
+
+Next
+C1 - CLI skeleton
+
+
 AI Website Framework — AI Agent System Instructions
 Document: AGENTS.md
 Status: Canonical
