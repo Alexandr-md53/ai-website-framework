@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field as dc_field
 import dataclasses
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
@@ -18,7 +18,7 @@ class CRUDError:
     code: str
     message_key: str
     field: Optional[str] = None
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: Dict[str, Any] = dc_field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -34,7 +34,7 @@ class CRUDResult:
     """Унифицированный результат CRUD-операции."""
 
     success: bool
-    errors: List[Any] = field(default_factory=list)
+    errors: List[Any] = dc_field(default_factory=list)
     data: Optional[Any] = None
     operation: str = "read"  # новое поле, по умолчанию "read"
 
