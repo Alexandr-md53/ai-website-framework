@@ -215,3 +215,20 @@ class UniversalCRUDEngine:
                 params={"details": str(e)},
             )
             return CRUDResult(success=False, data=None, errors=[err])
+
+        # --- A1.2 backward compat for test_crud_slug_integration.py ---
+
+
+try:
+    from .crud_engine import CRUDEngine as _LegacyCRUDEngine
+
+    CRUDEngine = _LegacyCRUDEngine
+except ImportError:
+    CRUDEngine = UniversalCRUDEngine  # fallback, если crud_engine не грузится
+
+# --- A1.2 backward compat for test_crud_slug_integration.py ---
+try:
+    from .crud_engine import CRUDEngine as _LegacyCRUDEngine
+    CRUDEngine = _LegacyCRUDEngine
+except ImportError:
+    CRUDEngine = UniversalCRUDEngine
