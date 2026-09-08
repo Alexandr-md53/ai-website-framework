@@ -1,8 +1,8 @@
-﻿# IMPORT_MAP_FROZEN_V2
+# IMPORT_MAP_FROZEN_V2
 
 Generated: Phase 10.1 B1 - A1 closed, B2 guardrail 395 passed
 Root: C:\Projects\AI_Website_Framework
-Modules scanned: 106
+Modules scanned: 109
 
 ## Architecture Invariants
 
@@ -147,6 +147,18 @@ SHOWCASE (showcases/ - may depend on framework, never reverse)
 - os
 - pathlib
 - typing
+
+### ai_framework.cli.__init__
+- ai_framework.cli.main
+
+### ai_framework.cli.__main__
+- ai_framework.cli.main
+
+### ai_framework.cli.main
+- argparse
+- pathlib
+- subprocess
+- sys
 
 ### ai_framework.core.__init__
 - .exceptions
@@ -493,6 +505,10 @@ SHOWCASE (showcases/ - may depend on framework, never reverse)
 ### ai_framework.domain.exceptions (imported by 2)
 - ai_framework.application.use_cases.create_article:9
 - ai_framework.domain.entities.article:4
+
+### ai_framework.cli.main (imported by 2)
+- ai_framework.cli.__init__:3
+- ai_framework.cli.__main__:3
 
 ### ai_framework.crud_ui.exceptions (imported by 2)
 - ai_framework.crud_ui.__init__:1
