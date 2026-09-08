@@ -1,6 +1,5 @@
 # CODING: utf-8, ASCII only
 
-
 """CLI skeleton - C1 minimal, no CORE dependencies."""
 
 import argparse
@@ -8,7 +7,19 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "10.2.0-c1"
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
+
+
+def _get_version() -> str:
+    root = Path(__file__).resolve().parents[2]
+    with (root / "pyproject.toml").open("rb") as f:
+        return tomllib.load(f)["project"]["version"]
+
+
+VERSION = _get_version()
 
 
 def _project_root() -> Path:
