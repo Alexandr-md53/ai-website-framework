@@ -96,3 +96,12 @@ Update START_HERE.md on each phase freeze
 No dump files (*_FROZEN*, *_inventory_*) in repo root
 Generated: 2026-09-05 — Phase 9.1 Frozen v2
 
+## [10.1.0-a1.1] - 2026-09-06
+### Fixed
+- Renamed 3 files without .py extension: application/__init__, application/dto/__init__, application/use_cases/__init__ -> __init__.py
+- Canonical pytest.ini: minversion 7.0, markers unit/validation/integration/api/crud/slug/security/showcases, filterwarnings, console_output_style classic
+- Removed duplicate [tool.pytest.ini_options] from pyproject.toml
+### Verified
+- Get-ChildItem __init__ without ext -> 0
+- pytest -q GREEN 100%
+

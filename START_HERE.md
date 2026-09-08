@@ -133,3 +133,5 @@ README.md — project overview
 CHAT_BOOTSTRAP.md — bootstrap for chat agents
 Generated: 2026-09-05 — Phase 9.1 Frozen v2
 
+Phase 10.1 A1.1 CLOSED: **init** fixed, pytest.ini canonical
+
