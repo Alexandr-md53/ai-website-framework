@@ -19,13 +19,14 @@ def test_c41_scaffold_crud_creates_structure():
         dest = scaffold_crud("test_cafe", tmp, "Test cafe")
         assert dest.exists()
         assert (dest / "pyproject.toml").exists()
-        assert (dest / "manifest.json").exists() or (
-            dest / "showcases" / "test_cafe" / "manifest.json"
-        ).exists()
+        # C4.2: single canonical manifest in root, not nested
+        assert (dest / "manifest.json").exists(), "root manifest.json missing"
+        assert not (dest / "showcases" / "test_cafe" / "manifest.json").exists(), (
+            "C4.2 forbids nested manifest"
+        )
 
-        # check showcase manifest is valid product=crud
-        m_path = dest / "showcases" / "test_cafe" / "manifest.json"
-        assert m_path.exists(), f"showcase manifest missing at {m_path}"
+        # check root manifest is valid product=crud
+        m_path = dest / "manifest.json"
         data = json.loads(m_path.read_text(encoding="utf-8"))
         assert data["product"] == "crud"
         assert data["version"] == "10.2.0-c1"
