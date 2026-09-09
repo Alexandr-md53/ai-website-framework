@@ -92,15 +92,45 @@ def cmd_import_map(args: argparse.Namespace) -> int:
 
 
 def cmd_new(args: argparse.Namespace) -> int:
+    from pathlib import Path
+    from ai_framework.tools.scaffold import list_templates, scaffold_crud
+
     if args.list:
+        templates = list_templates()
         print("[new] available templates:")
-        print(" - minimal")
-        print(" - crud-api")
-        print(" - showcase")
-        print("[new] (C1 skeleton - only --list implemented)")
+        if not templates:
+            print(" - (no templates found in ai_framework/templates/)")
+        else:
+            for t in templates:
+                print(f" - {t}")
         return 0
-    print("[new] use: ai-framework new --list")
-    print("[new] (full scaffolding will be in C2/C3)")
+
+    template = getattr(args, "template", None)
+    name = getattr(args, "name", None)
+
+    if not template:
+        template = "crud"
+    if template != "crud":
+        print(
+            f"[new] template '{template}' not implemented yet (C4.1 only supports crud)"
+        )
+        print(f"[new] available: {list_templates()}")
+        return 1
+    if not name:
+        print("[new] usage: ai-framework new --template crud <name>")
+        print("[new] ai-framework new <name> --template crud")
+        return 1
+
+    dest_root = Path.cwd()
+    try:
+        dest = scaffold_crud(name, dest_root)
+    except Exception as e:
+        print(f"[new] failed: {e}")
+        return 1
+
+    print(f"[new] created crud project '{name}' at {dest}")
+    print(f"[new] - {dest / 'pyproject.toml'}")
+    print(f"[new] - {dest / 'showcases' / dest.name / 'manifest.json'}")
     return 0
 
 
@@ -166,7 +196,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_verify.set_defaults(func=cmd_verify)
 
-    p_new = sub.add_parser("new", help="Scaffold new project (C1: only --list)")
+    p_new = sub.add_parser("new", help="Scaffold new project (C4.1 crud template)")
+    p_new.add_argument("name", nargs="?", help="Project name")
+    p_new.add_argument("--template", "-t", dest="template", help="Template name (crud)")
     p_new.add_argument("--list", action="store_true", help="List available templates")
     p_new.set_defaults(func=cmd_new)
 
