@@ -1,0 +1,14 @@
+{
+  "name": "lawyer",
+  "product": "crud",
+  "version": "10.2.0-c1",
+  "package": "showcases.lawyer",
+  "description": "Lawyer practice areas and consultation requests",
+  "domain": [
+    "models"
+  ],
+  "metadata": "showcases.lawyer.domain.models",
+  "services": [
+    "showcases.lawyer.services.lawyer_service"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "cafe",
+  "product": "crud",
+  "version": "10.2.0-c1",
+  "package": "showcases.cafe",
+  "description": "Cafe menu with RBAC (barista/manager)",
+  "domain": [
+    "menu_item"
+  ],
+  "metadata": "showcases.cafe.metadata.cafe_metadata.get_cafe_ui_schema",
+  "services": [
+    "showcases.cafe.services.cafe_service.CafeService"
+  ]
+}

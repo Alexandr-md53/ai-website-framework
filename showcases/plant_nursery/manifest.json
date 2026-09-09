@@ -1,0 +1,16 @@
+{
+  "name": "plant_nursery",
+  "product": "crud",
+  "version": "10.2.0-c1",
+  "package": "showcases.plant_nursery",
+  "description": "Plant nursery with light/water requirements",
+  "domain": [
+    "category",
+    "plant",
+    "pricing"
+  ],
+  "metadata": "showcases.plant_nursery.metadata.plant_metadata.get_plant_ui_schema",
+  "services": [
+    "showcases.plant_nursery.services.catalog_service"
+  ]
+}
