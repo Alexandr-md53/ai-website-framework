@@ -64,7 +64,7 @@ KNOWN_SHOWCASES = [
         product="crud",
         description="Cafe menu with RBAC (barista/manager)",
         domain=["menu_item"],
-        metadata="showcases.cafe.metadata.cafe_metadata.get_cafe_ui_schema",
+        metadata="showcases.cafe.metadata.cafe_metadata.get_menu_item_ui_schema",
         services=["showcases.cafe.services.cafe_service.CafeService"],
     ),
     ShowcaseManifest(
@@ -72,8 +72,8 @@ KNOWN_SHOWCASES = [
         product="crud",
         description="Lawyer practice areas and consultation requests",
         domain=["models"],
-        metadata="showcases.lawyer.domain.models",
-        services=["showcases.lawyer.services.lawyer_service"],
+        metadata="showcases.lawyer.domain.validators.ConsultationRequestValidator",
+        services=["showcases.lawyer.services.lawyer_service.LawyerService"],
     ),
     ShowcaseManifest(
         name="plant_nursery",
@@ -81,6 +81,6 @@ KNOWN_SHOWCASES = [
         description="Plant nursery with light/water requirements",
         domain=["category", "plant", "pricing"],
         metadata="showcases.plant_nursery.metadata.plant_metadata.get_plant_ui_schema",
-        services=["showcases.plant_nursery.services.catalog_service"],
+        services=["showcases.plant_nursery.services.catalog_service.PlantNurseryCatalogService"],
     ),
 ]

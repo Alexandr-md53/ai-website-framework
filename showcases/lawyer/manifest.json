@@ -7,8 +7,8 @@
   "domain": [
     "models"
   ],
-  "metadata": "showcases.lawyer.domain.models",
+  "metadata": "showcases.lawyer.domain.validators.ConsultationRequestValidator",
   "services": [
-    "showcases.lawyer.services.lawyer_service"
+    "showcases.lawyer.services.lawyer_service.LawyerService"
   ]
 }

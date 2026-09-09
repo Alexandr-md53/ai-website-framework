@@ -7,7 +7,7 @@
   "domain": [
     "menu_item"
   ],
-  "metadata": "showcases.cafe.metadata.cafe_metadata.get_cafe_ui_schema",
+  "metadata": "showcases.cafe.metadata.cafe_metadata.get_menu_item_ui_schema",
   "services": [
     "showcases.cafe.services.cafe_service.CafeService"
   ]

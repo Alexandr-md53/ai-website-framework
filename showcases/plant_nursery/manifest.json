@@ -11,6 +11,6 @@
   ],
   "metadata": "showcases.plant_nursery.metadata.plant_metadata.get_plant_ui_schema",
   "services": [
-    "showcases.plant_nursery.services.catalog_service"
+    "showcases.plant_nursery.services.catalog_service.PlantNurseryCatalogService"
   ]
 }
