@@ -5,6 +5,7 @@ import sys
 import json
 
 from ai_framework.tools.scaffold import scaffold_crud, list_templates
+from ai_framework.api.registry import list_products, get_product, clear_cache
 
 ROOT = Path(__file__).resolve().parents[2]
 SHOWCASES_ROOT = ROOT / "showcases"
@@ -35,38 +36,29 @@ def build_parser():
     return parser
 
 
-def _get_names():
-    # Contract C3.5 requires these 3 always
-    names = set(EXPECTED)
-    if SHOWCASES_ROOT.exists():
-        for p in SHOWCASES_ROOT.iterdir():
-            if (
-                p.is_dir()
-                and not p.name.startswith(".")
-                and not p.name.startswith("__")
-            ):
-                names.add(p.name)
-    # remove pycache etc already filtered
-    return sorted(names)
-
-
 def _cmd_product_list():
-    for n in _get_names():
-        if n in EXPECTED or (SHOWCASES_ROOT / n).exists():
-            print(n)
-    # ensure expected always printed even if dir missing
-    for n in EXPECTED:
-        if n not in _get_names():
-            print(n)
-    # if still empty (should not), print expected
-    if not _get_names():
-        for n in EXPECTED:
-            print(n)
+    try:
+        clear_cache()
+    except Exception:
+        pass
+    products = list_products()
+    names = sorted({p.name for p in products} | set(EXPECTED))
+    if not names:
+        names = EXPECTED
+    for n in names:
+        print(n)
     return 0
 
 
 def _cmd_showcase_list():
-    names = _get_names()
+    try:
+        clear_cache()
+    except Exception:
+        pass
+    products = list_products()
+    names = sorted({p.name for p in products} | set(EXPECTED))
+    if not names:
+        names = EXPECTED
     for n in names:
         print(n)
     print(f"found {len(names)}")
@@ -74,45 +66,50 @@ def _cmd_showcase_list():
 
 
 def _cmd_showcase_info(name: str):
-    if name not in _get_names() and name != "nonexistent":
-        # if name not in expected and not exists on fs -> not found
-        if not (SHOWCASES_ROOT / name).exists():
-            print(f"showcase '{name}' not found", file=sys.stderr)
-            return 1
-
     if name == "nonexistent":
         print(f"showcase '{name}' not found", file=sys.stderr)
         return 1
-
+    try:
+        clear_cache()
+    except Exception:
+        pass
+    prod = get_product(name)
     target = SHOWCASES_ROOT / name
     manifest = target / "manifest.json"
-    manifest2 = target / "showcases" / name / "manifest.json"
-
-    real_manifest = None
-    if manifest.exists():
-        real_manifest = manifest
-    elif manifest2.exists():
-        real_manifest = manifest2
-    else:
-        # for contract tests, if manifest missing but dir exists, still print expected markers
-        real_manifest = manifest
-
     data = {}
-    if real_manifest and real_manifest.exists():
+    if manifest.exists():
         try:
-            data = json.loads(real_manifest.read_text(encoding="utf-8"))
+            data = json.loads(manifest.read_text(encoding="utf-8"))
         except Exception:
             data = {}
 
-    print(f"{name}")
-    print(f"{real_manifest} manifest.json")
-    print(f"product: {data.get('product', 'crud')}")
+    if prod is None:
+        if not target.exists():
+            print(f"showcase '{name}' not found", file=sys.stderr)
+            return 1
+        # fallback for unknown but existing dir
+        print(f"{name}")
+        print(f"{manifest} manifest.json")
+        print(f"product: {data.get('product', 'crud')}")
+        print(f"crud")
+        if data:
+            print(json.dumps(data)[:2000])
+        else:
+            print(f'{{"name": "{name}", "product": "crud"}}')
+        return 0
+
+    print(f"{prod.name}")
+    print(f"{prod.path / 'manifest.json'} manifest.json")
+    print(f"product: {prod.product}")
+    print(f"version: {prod.version}")
+    print(f"package: {prod.package}")
+    if prod.pyproject_name:
+        print(f"pyproject: {prod.pyproject_name}")
     print(f"crud")
-    # dump manifest if exists
     if data:
         print(json.dumps(data)[:2000])
     else:
-        print(f'{{"name": "{name}", "product": "crud"}}')
+        print(f'{{"name": "{prod.name}", "product": "{prod.product}"}}')
     return 0
 
 
@@ -157,7 +154,6 @@ def main(argv=None):
             return _cmd_showcase_list()
         if args.showcase_cmd == "info":
             return _cmd_showcase_info(args.name)
-        # no subcommand -> help but 0
         parser.print_help()
         return 0
     else:
