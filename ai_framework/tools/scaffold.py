@@ -62,6 +62,10 @@ def scaffold_crud(name: str, dest_root: Path, description: str = "") -> Path:
         (dest / out_name).write_text(rendered, encoding="utf-8")
 
     # showcases/<name>/ with code skeleton, NO manifest.json inside
+    showcases_root = dest / "showcases"
+    showcases_root.mkdir(parents=True, exist_ok=True)
+    (showcases_root / "__init__.py").write_text("", encoding="utf-8")
+
     showcase_dir = dest / "showcases" / normalized
     showcase_dir.mkdir(parents=True, exist_ok=True)
     (showcase_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -119,3 +123,125 @@ def validate_scaffold(project_path: Path) -> list[str]:
             errors.append(f"package must be showcases.{name}, got {pkg}")
 
     return errors
+
+
+def _read_pyproject_toml(project_path: Path) -> dict:
+    """Filesystem-only read of pyproject.toml, no import of generated code."""
+    project_path = Path(project_path)
+    pyproject = project_path / "pyproject.toml"
+    if not pyproject.exists():
+        return {}
+    try:
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
+        with pyproject.open("rb") as f:
+            return tomllib.load(f)
+    except Exception:
+        # fallback simple parse for name/version only
+        try:
+            text = pyproject.read_text(encoding="utf-8")
+            return {"raw_text": text}
+        except Exception:
+            return {}
+
+
+def inspect_project(project_path: Path) -> dict:
+    """
+    C4.3: filesystem-only inspection of generated CRUD artifact.
+    C4.3 MUST NOT dynamically load generated pkg or rely on importlib.
+    Only Path / json / toml allowed for inspection.
+    """
+    project_path = Path(project_path)
+    name = project_path.name
+    errors: list[str] = []
+
+    manifest_path = project_path / "manifest.json"
+    pyproject_path = project_path / "pyproject.toml"
+
+    manifest_data: dict = {}
+    if not manifest_path.exists():
+        errors.append("manifest.json missing in project root")
+    else:
+        try:
+            manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            errors.append(f"manifest.json invalid: {e}")
+            manifest_data = {}
+
+    pyproject_data = _read_pyproject_toml(project_path)
+    if not pyproject_path.exists():
+        errors.append("pyproject.toml missing")
+
+    # filesystem structure checks (no import)
+    showcase_pkg_dir = project_path / "showcases" / name
+    if not showcase_pkg_dir.exists():
+        errors.append(f"showcases/{name} missing")
+    for sub in ["", "domain", "metadata", "services"]:
+        p = (
+            showcase_pkg_dir / sub / "__init__.py"
+            if sub
+            else showcase_pkg_dir / "__init__.py"
+        )
+        if not p.exists():
+            errors.append(f"{p.relative_to(project_path)} missing")
+
+    # forbidden nested manifest (C4.2)
+    nested = project_path / "showcases" / name / "manifest.json"
+    if nested.exists():
+        errors.append(f"duplicate manifest forbidden: {nested}")
+
+    # manifest ↔ filesystem consistency (still filesystem-only)
+    if manifest_data:
+        if manifest_data.get("name") != name:
+            errors.append(
+                f"manifest.name mismatch: {manifest_data.get('name')}!= {name}"
+            )
+        if manifest_data.get("product") != "crud":
+            errors.append(f"manifest.product must be crud")
+        pkg = manifest_data.get("package", "")
+        if pkg != f"showcases.{name}":
+            errors.append(f"manifest.package must be showcases.{name}, got {pkg}")
+        # metadata/services startswith package
+        md = manifest_data.get("metadata", "")
+        if md and not md.startswith(f"showcases.{name}"):
+            errors.append(f"metadata must start with showcases.{name}: {md}")
+        for svc in manifest_data.get("services", []):
+            if not svc.startswith(f"showcases.{name}"):
+                errors.append(f"service must start with showcases.{name}: {svc}")
+
+    # version lock (filesystem)
+    manifest_version = manifest_data.get("version") if manifest_data else None
+    pyproject_version = None
+    if isinstance(pyproject_data, dict):
+        pyproject_version = (
+            pyproject_data.get("project", {}).get("version")
+            if "project" in pyproject_data
+            else None
+        )
+
+    if manifest_version and pyproject_version and manifest_version != pyproject_version:
+        errors.append(
+            f"version lock failed: manifest {manifest_version}!= pyproject {pyproject_version}"
+        )
+
+    try:
+        fw_version = _framework_version()
+        if manifest_version and manifest_version != fw_version:
+            errors.append(
+                f"manifest.version {manifest_version}!= FRAMEWORK_VERSION {fw_version}"
+            )
+    except Exception:
+        pass
+
+    return {
+        "path": str(project_path),
+        "name": name,
+        "manifest": manifest_data,
+        "pyproject": pyproject_data,
+        "manifest_version": manifest_version,
+        "pyproject_version": pyproject_version,
+        "errors": errors,
+        "valid": len(errors) == 0,
+    }
