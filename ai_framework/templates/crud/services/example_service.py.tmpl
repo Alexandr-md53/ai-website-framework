@@ -1,0 +1,11 @@
+# Example service for {{name}}
+from typing import List, Dict
+
+def list_examples() -> List[Dict]:
+    return []
+
+def get_example(example_id: str) -> Dict:
+    return {"id": example_id, "name": "example"}
+
+def create_example(data: Dict) -> Dict:
+    return {"id": "new", **data}
