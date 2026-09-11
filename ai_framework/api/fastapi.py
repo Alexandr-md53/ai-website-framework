@@ -1,12 +1,13 @@
 # CODING: utf-8, ASCII only
 """
-ai_framework.api.fastapi - Delivery Adapter wiring (C6.1)
-Phase 11: EndpointRegistry -> Router -> APIAdapter -> FastAPI
+ai_framework.api.fastapi - Delivery Adapter wiring (C6.1 + C6.2)
+Phase 11 C6.1: basic factory
+Phase 11 C6.2: extended wiring - middlewares, health, lifespan passthrough
 No business logic, only wiring. Uses existing frozen A1.4 components without modification.
 """
 
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, List, Callable, Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -16,13 +17,48 @@ from .router import Router
 from .adapter import APIAdapter
 
 
-def create_app(registry: Optional[EndpointRegistry] = None) -> FastAPI:
+def _get_framework_version() -> str:
+    try:
+        from ..tools.scaffold import _framework_version
+
+        return _framework_version()
+    except Exception:
+        return "unknown"
+
+
+def create_app(
+    registry: Optional[EndpointRegistry] = None,
+    middlewares: Optional[List[Callable]] = None,
+    include_health: bool = True,
+    lifespan: Optional[Any] = None,
+) -> FastAPI:
     if registry is None:
         registry = EndpointRegistry()
 
     router = Router(registry)
+
+    if middlewares:
+        for mw in middlewares:
+            router.use_middleware(mw)
+
     adapter = APIAdapter(router)
-    app = FastAPI()
+
+    if lifespan is not None:
+        app = FastAPI(lifespan=lifespan)
+    else:
+        app = FastAPI()
+
+    if include_health:
+
+        async def health_handler(request: Request):
+            return JSONResponse(
+                content={"status": "ok", "version": _get_framework_version()},
+                status_code=200,
+            )
+
+        has_health = any(p == "/health" for _, p in registry.list())
+        if not has_health:
+            app.add_api_route("/health", health_handler, methods=["GET"])
 
     routes_snapshot = (
         list(registry.routes.items()) if hasattr(registry, "routes") else []
