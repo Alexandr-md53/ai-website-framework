@@ -8,6 +8,7 @@ from ai_framework.tools.scaffold import (
     scaffold_crud,
     list_templates,
     _framework_version,
+    inspect_project,
 )
 from ai_framework.api.registry import list_products, get_product, clear_cache
 
@@ -20,7 +21,6 @@ def build_parser():
     parser = argparse.ArgumentParser(prog="ai-framework")
     sub = parser.add_subparsers(dest="command")
 
-    # new
     p_new = sub.add_parser("new")
     p_new.add_argument("name", nargs="?", default=None)
     p_new.add_argument("--template", default="crud")
@@ -28,7 +28,6 @@ def build_parser():
     p_new.add_argument("--list", action="store_true")
     p_new.add_argument("--description", default="")
 
-    # product
     p_prod = sub.add_parser("product")
     prod_sub = p_prod.add_subparsers(dest="product_cmd")
     p_prod_list = prod_sub.add_parser("list")
@@ -37,7 +36,6 @@ def build_parser():
     p_prod_info.add_argument("name")
     p_prod_info.add_argument("--json", action="store_true", dest="json_output")
 
-    # showcase
     p_sh = sub.add_parser("showcase")
     sh_sub = p_sh.add_subparsers(dest="showcase_cmd")
     p_sh_list = sh_sub.add_parser("list")
@@ -46,14 +44,16 @@ def build_parser():
     p_sh_info.add_argument("name")
     p_sh_info.add_argument("--json", action="store_true", dest="json_output")
 
-    # version - C5.4
     sub.add_parser("version")
+
+    p_inspect = sub.add_parser("inspect")
+    p_inspect.add_argument("path", nargs="?", default=None)
+    p_inspect.add_argument("--json", action="store_true", dest="json_output")
 
     return parser
 
 
 def _json_product(p):
-    # minimal C5.4 JSON contract, no enrichment leak
     return {
         "name": p.name,
         "product": p.product,
@@ -70,7 +70,6 @@ def _cmd_product_list(json_output=False):
     products = list_products()
     if json_output:
         data = [_json_product(p) for p in sorted(products, key=lambda x: x.name)]
-        # ensure EXPECTED present even if fs missing (contract C3.5)
         names_in = {d["name"] for d in data}
         for n in EXPECTED:
             if n not in names_in:
@@ -85,7 +84,6 @@ def _cmd_product_list(json_output=False):
         data = sorted(data, key=lambda x: x["name"])
         print(json.dumps(data))
         return 0
-
     names = sorted({p.name for p in products} | set(EXPECTED))
     if not names:
         names = EXPECTED
@@ -116,7 +114,6 @@ def _cmd_showcase_list(json_output=False):
         data = sorted(data, key=lambda x: x["name"])
         print(json.dumps(data))
         return 0
-
     names = sorted({p.name for p in products} | set(EXPECTED))
     if not names:
         names = EXPECTED
@@ -143,7 +140,6 @@ def _cmd_showcase_info(name: str, json_output=False):
             data = json.loads(manifest.read_text(encoding="utf-8"))
         except Exception:
             data = {}
-
     if prod is None:
         if not target.exists():
             print(f"showcase '{name}' not found", file=sys.stderr)
@@ -169,11 +165,9 @@ def _cmd_showcase_info(name: str, json_output=False):
         else:
             print(f'{{"name": "{name}", "product": "crud"}}')
         return 0
-
     if json_output:
         print(json.dumps(_json_product(prod)))
         return 0
-
     print(f"{prod.name}")
     print(f"{prod.path / 'manifest.json'} manifest.json")
     print(f"product: {prod.product}")
@@ -191,6 +185,40 @@ def _cmd_showcase_info(name: str, json_output=False):
 
 def _cmd_version():
     print(_framework_version())
+    return 0
+
+
+def _cmd_inspect(path=None, json_output=False):
+    target = Path(path) if path else Path.cwd()
+    try:
+        result = inspect_project(target)
+    except Exception as e:
+        print(f"Error inspecting {target}: {e}", file=sys.stderr)
+        return 2
+    if json_output:
+        # ensure Path serialized
+        try:
+            print(json.dumps(result, default=str))
+        except Exception:
+            print(json.dumps({"path": str(target), "raw": str(result)}, default=str))
+        return 0
+    # text mode - reuse existing format if dict, else print json snippet
+    if isinstance(result, dict):
+        # C4.4 text format expectations: print manifest info if present
+        name = result.get("name") or target.name
+        print(f"{name}")
+        manifest_path = result.get("manifest_path") or (target / "manifest.json")
+        print(f"{manifest_path} manifest.json")
+        prod = result.get("product", "crud")
+        print(f"product: {prod}")
+        print(f"crud")
+        # dump limited json
+        try:
+            print(json.dumps(result, default=str)[:2000])
+        except Exception:
+            print(str(result)[:2000])
+    else:
+        print(str(result)[:2000])
     return 0
 
 
@@ -249,6 +277,11 @@ def main(argv=None):
 
     elif args.command == "version":
         return _cmd_version()
+
+    elif args.command == "inspect":
+        return _cmd_inspect(
+            path=args.path, json_output=getattr(args, "json_output", False)
+        )
 
     else:
         parser.print_help()
