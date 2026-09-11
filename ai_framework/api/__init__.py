@@ -2,7 +2,7 @@
 """
 ai_framework.api - canonical public API
 
-Phase 10.1 A1.4 Delivery Adapter + Phase 10.2 C5.1 Product Registry + C5.2 enrichment + C5.5 inspect
+Phase 10.1 A1.4 Delivery Adapter + Phase 10.2 C5.1 Product Registry + C5.2 enrichment + C5.5 inspect + C6.1 fastapi factory
 """
 
 from .contracts import (
@@ -24,6 +24,11 @@ from .registry import (
 from .endpoint import Endpoint
 from ..tools.scaffold import inspect_project
 
+try:
+    from .fastapi import create_app
+except Exception:
+    create_app = None  # FastAPI not installed in minimal env, factory optional
+
 __all__ = [
     "APIResponse",
     "map_crud_error_to_status_code",
@@ -43,4 +48,5 @@ __all__ = [
     "clear_cache",
     "Endpoint",
     "inspect_project",
+    "create_app",
 ]
