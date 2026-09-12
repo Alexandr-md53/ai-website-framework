@@ -11,7 +11,7 @@ except ImportError:
 
 
 def _get_framework_version() -> str:
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2] # было [1]
     with (root / "pyproject.toml").open("rb") as f:
         return tomllib.load(f)["project"]["version"]
 
