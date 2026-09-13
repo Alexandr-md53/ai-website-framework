@@ -6,7 +6,11 @@ import asyncio
 import concurrent.futures
 from decimal import Decimal
 from showcases.plant_nursery.domain.category import Category
-from showcases.plant_nursery.domain.plant import Plant, LightRequirement, WateringRequirement
+from showcases.plant_nursery.domain.plant import (
+    Plant,
+    LightRequirement,
+    WateringRequirement,
+)
 from showcases.plant_nursery.domain.pricing import DiscountPolicy
 from showcases.plant_nursery.validation.category_rules import CategoryHierarchyValidator
 from ai_framework.validation import ValidationEngine, ValidationContext
@@ -49,6 +53,12 @@ class MoveCategoryDTO:
     parent_id: Optional[str] = None
 
 
+@dataclass
+class ListPlantsByCategoryDTO:
+    id: Optional[str] = None
+    include_descendants: bool = False
+
+
 def _run_async(coro):
     def _run_in_new_loop():
         new_loop = asyncio.new_event_loop()
@@ -77,9 +87,21 @@ class AddPlantUseCase:
 
     def execute(self, dto: AddPlantDTO):
         try:
-            cat_id = uuid.UUID(dto.category_id) if isinstance(dto.category_id, str) else dto.category_id
-            light = LightRequirement(dto.light_req) if isinstance(dto.light_req, str) else dto.light_req
-            water = WateringRequirement(dto.water_req) if isinstance(dto.water_req, str) else dto.water_req
+            cat_id = (
+                uuid.UUID(dto.category_id)
+                if isinstance(dto.category_id, str)
+                else dto.category_id
+            )
+            light = (
+                LightRequirement(dto.light_req)
+                if isinstance(dto.light_req, str)
+                else dto.light_req
+            )
+            water = (
+                WateringRequirement(dto.water_req)
+                if isinstance(dto.water_req, str)
+                else dto.water_req
+            )
             category = self._service.category_repo.get(cat_id)
             if not category:
                 raise ValueError("Category does not exist")
@@ -100,8 +122,12 @@ class AddPlantUseCase:
                 "category_id": str(created.category_id),
                 "name": created.name,
                 "description": created.description,
-                "light_req": created.light_req.value if hasattr(created.light_req, 'value') else str(created.light_req),
-                "water_req": created.water_req.value if hasattr(created.water_req, 'value') else str(created.water_req),
+                "light_req": created.light_req.value
+                if hasattr(created.light_req, "value")
+                else str(created.light_req),
+                "water_req": created.water_req.value
+                if hasattr(created.water_req, "value")
+                else str(created.water_req),
                 "frost_resistance": created.frost_resistance,
                 "main_image_id": created.main_image_id,
             }
@@ -125,7 +151,12 @@ class ListFrostResistantUseCase:
     def execute(self, dto: FrostFilterDTO) -> List[Dict[str, Any]]:
         plants = self._service.find_frost_resistant_plants(min_temp=dto.min_temp)
         return [
-            {"id": str(p.id), "category_id": str(p.category_id), "name": p.name, "frost_resistance": p.frost_resistance}
+            {
+                "id": str(p.id),
+                "category_id": str(p.category_id),
+                "name": p.name,
+                "frost_resistance": p.frost_resistance,
+            }
             for p in plants
         ]
 
@@ -137,18 +168,33 @@ class QuoteUseCase:
     def execute(self, dto: QuoteDTO) -> Dict[str, Any]:
         try:
             unit_price = Decimal(str(dto.unit_price))
-            policy = DiscountPolicy(dto.discount_policy) if isinstance(dto.discount_policy, str) else dto.discount_policy
-            total = self._service.calculate_quote(unit_price=unit_price, quantity=int(dto.quantity), discount_policy=policy)
+            policy = (
+                DiscountPolicy(dto.discount_policy)
+                if isinstance(dto.discount_policy, str)
+                else dto.discount_policy
+            )
+            total = self._service.calculate_quote(
+                unit_price=unit_price,
+                quantity=int(dto.quantity),
+                discount_policy=policy,
+            )
             return {
                 "unit_price": str(unit_price),
                 "quantity": int(dto.quantity),
-                "discount_policy": policy.value if hasattr(policy, 'value') else str(policy),
+                "discount_policy": policy.value
+                if hasattr(policy, "value")
+                else str(policy),
                 "total": str(total),
             }
         except ValueError as e:
             return {
                 "status": 400,
-                "json": {"success": False, "error": str(e), "code": "VALIDATION_ERROR", "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}]},
+                "json": {
+                    "success": False,
+                    "error": str(e),
+                    "code": "VALIDATION_ERROR",
+                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
+                },
                 "success": False,
             }
 
@@ -163,7 +209,11 @@ class CreateCategoryUseCase:
             parent_uuid = None
             if dto.parent_id:
                 try:
-                    parent_uuid = uuid.UUID(dto.parent_id) if isinstance(dto.parent_id, str) else dto.parent_id
+                    parent_uuid = (
+                        uuid.UUID(dto.parent_id)
+                        if isinstance(dto.parent_id, str)
+                        else dto.parent_id
+                    )
                 except Exception:
                     return {
                         "status": 400,
@@ -171,7 +221,14 @@ class CreateCategoryUseCase:
                             "success": False,
                             "error": "validation.not_found",
                             "code": "VALIDATION_ERROR",
-                            "errors": [{"code": "VALIDATION_ERROR", "field": "parent_id", "message": "validation.not_found", "message_key": "validation.not_found"}],
+                            "errors": [
+                                {
+                                    "code": "VALIDATION_ERROR",
+                                    "field": "parent_id",
+                                    "message": "validation.not_found",
+                                    "message_key": "validation.not_found",
+                                }
+                            ],
                         },
                         "success": False,
                     }
@@ -192,20 +249,37 @@ class CreateCategoryUseCase:
 
             if not is_valid:
                 first_error = result.errors[0] if result.errors else None
-                msg_key = getattr(first_error, "message_key", "validation.error") if first_error else "validation.error"
-                field = getattr(first_error, "field", "parent_id") if first_error else "parent_id"
+                msg_key = (
+                    getattr(first_error, "message_key", "validation.error")
+                    if first_error
+                    else "validation.error"
+                )
+                field = (
+                    getattr(first_error, "field", "parent_id")
+                    if first_error
+                    else "parent_id"
+                )
                 return {
                     "status": 400,
                     "json": {
                         "success": False,
                         "error": msg_key,
                         "code": "VALIDATION_ERROR",
-                        "errors": [{"code": "VALIDATION_ERROR", "field": field, "message": msg_key, "message_key": msg_key}],
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": field,
+                                "message": msg_key,
+                                "message_key": msg_key,
+                            }
+                        ],
                     },
                     "success": False,
                 }
 
-            category = Category(id=cat_id, name=dto.name, slug=dto.slug, parent_id=parent_uuid)
+            category = Category(
+                id=cat_id, name=dto.name, slug=dto.slug, parent_id=parent_uuid
+            )
             self._repo.add(category)
 
             return {
@@ -217,7 +291,12 @@ class CreateCategoryUseCase:
         except ValueError as e:
             return {
                 "status": 400,
-                "json": {"success": False, "error": str(e), "code": "VALIDATION_ERROR", "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}]},
+                "json": {
+                    "success": False,
+                    "error": str(e),
+                    "code": "VALIDATION_ERROR",
+                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
+                },
                 "success": False,
             }
 
@@ -235,7 +314,14 @@ class MoveCategoryUseCase:
                         "success": False,
                         "error": "validation.not_found",
                         "code": "VALIDATION_ERROR",
-                        "errors": [{"code": "VALIDATION_ERROR", "field": "id", "message": "validation.not_found", "message_key": "validation.not_found"}],
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
                     },
                     "success": False,
                 }
@@ -248,7 +334,14 @@ class MoveCategoryUseCase:
                         "success": False,
                         "error": "validation.not_found",
                         "code": "VALIDATION_ERROR",
-                        "errors": [{"code": "VALIDATION_ERROR", "field": "id", "message": "validation.not_found", "message_key": "validation.not_found"}],
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
                     },
                     "success": False,
                 }
@@ -261,7 +354,14 @@ class MoveCategoryUseCase:
                         "success": False,
                         "error": "validation.not_found",
                         "code": "VALIDATION_ERROR",
-                        "errors": [{"code": "VALIDATION_ERROR", "field": "id", "message": "validation.not_found", "message_key": "validation.not_found"}],
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
                     },
                     "success": False,
                 }
@@ -269,7 +369,11 @@ class MoveCategoryUseCase:
             parent_uuid = None
             if dto.parent_id is not None:
                 try:
-                    parent_uuid = uuid.UUID(dto.parent_id) if isinstance(dto.parent_id, str) else dto.parent_id
+                    parent_uuid = (
+                        uuid.UUID(dto.parent_id)
+                        if isinstance(dto.parent_id, str)
+                        else dto.parent_id
+                    )
                 except Exception:
                     return {
                         "status": 400,
@@ -277,7 +381,14 @@ class MoveCategoryUseCase:
                             "success": False,
                             "error": "validation.not_found",
                             "code": "VALIDATION_ERROR",
-                            "errors": [{"code": "VALIDATION_ERROR", "field": "parent_id", "message": "validation.not_found", "message_key": "validation.not_found"}],
+                            "errors": [
+                                {
+                                    "code": "VALIDATION_ERROR",
+                                    "field": "parent_id",
+                                    "message": "validation.not_found",
+                                    "message_key": "validation.not_found",
+                                }
+                            ],
                         },
                         "success": False,
                     }
@@ -298,20 +409,40 @@ class MoveCategoryUseCase:
 
             if not is_valid:
                 first_error = result.errors[0] if result.errors else None
-                msg_key = getattr(first_error, "message_key", "validation.error") if first_error else "validation.error"
-                field = getattr(first_error, "field", "parent_id") if first_error else "parent_id"
+                msg_key = (
+                    getattr(first_error, "message_key", "validation.error")
+                    if first_error
+                    else "validation.error"
+                )
+                field = (
+                    getattr(first_error, "field", "parent_id")
+                    if first_error
+                    else "parent_id"
+                )
                 return {
                     "status": 400,
                     "json": {
                         "success": False,
                         "error": msg_key,
                         "code": "VALIDATION_ERROR",
-                        "errors": [{"code": "VALIDATION_ERROR", "field": field, "message": msg_key, "message_key": msg_key}],
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": field,
+                                "message": msg_key,
+                                "message_key": msg_key,
+                            }
+                        ],
                     },
                     "success": False,
                 }
 
-            updated = Category(id=existing.id, name=existing.name, slug=existing.slug, parent_id=parent_uuid)
+            updated = Category(
+                id=existing.id,
+                name=existing.name,
+                slug=existing.slug,
+                parent_id=parent_uuid,
+            )
             self._repo.add(updated)
 
             return {
@@ -323,6 +454,106 @@ class MoveCategoryUseCase:
         except ValueError as e:
             return {
                 "status": 400,
-                "json": {"success": False, "error": str(e), "code": "VALIDATION_ERROR", "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}]},
+                "json": {
+                    "success": False,
+                    "error": str(e),
+                    "code": "VALIDATION_ERROR",
+                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
+                },
+                "success": False,
+            }
+
+
+class ListPlantsByCategoryUseCase:
+    def __init__(self, catalog_service):
+        self._service = catalog_service
+
+    def execute(self, dto: ListPlantsByCategoryDTO):
+        try:
+            if not dto.id:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+            try:
+                cat_id = uuid.UUID(dto.id) if isinstance(dto.id, str) else dto.id
+            except Exception:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+
+            try:
+                plants = self._service.find_plants_by_category(
+                    cat_id, include_descendants=dto.include_descendants
+                )
+            except ValueError as ve:
+                msg = str(ve)
+                if "not_found" in msg:
+                    return {
+                        "status": 400,
+                        "json": {
+                            "success": False,
+                            "error": "validation.not_found",
+                            "code": "VALIDATION_ERROR",
+                            "errors": [
+                                {
+                                    "code": "VALIDATION_ERROR",
+                                    "field": "id",
+                                    "message": "validation.not_found",
+                                    "message_key": "validation.not_found",
+                                }
+                            ],
+                        },
+                        "success": False,
+                    }
+                raise
+
+            result = [
+                {
+                    "id": str(p.id),
+                    "category_id": str(p.category_id),
+                    "name": p.name,
+                    "frost_resistance": p.frost_resistance,
+                }
+                for p in plants
+            ]
+            return result
+
+        except ValueError as e:
+            return {
+                "status": 400,
+                "json": {
+                    "success": False,
+                    "error": str(e),
+                    "code": "VALIDATION_ERROR",
+                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
+                },
                 "success": False,
             }

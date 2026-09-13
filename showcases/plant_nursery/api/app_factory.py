@@ -9,6 +9,7 @@ from showcases.plant_nursery.api.dto_factories import (
     frost_filter_dto_factory,
     create_category_dto_factory,
     move_category_dto_factory,
+    list_plants_by_category_dto_factory,
 )
 from showcases.plant_nursery.application.use_cases import (
     AddPlantUseCase,
@@ -16,6 +17,7 @@ from showcases.plant_nursery.application.use_cases import (
     QuoteUseCase,
     CreateCategoryUseCase,
     MoveCategoryUseCase,
+    ListPlantsByCategoryUseCase,
 )
 
 _default_service: Optional[PlantNurseryCatalogService] = None
@@ -54,6 +56,10 @@ def _make_use_case_map(
         ("PUT", "/categories/{id}/parent"): (
             MoveCategoryUseCase(category_repo=service.category_repo),
             move_category_dto_factory,
+        ),
+        ("GET", "/categories/{id}/plants"): (
+            ListPlantsByCategoryUseCase(catalog_service=service),
+            list_plants_by_category_dto_factory,
         ),
     }
 

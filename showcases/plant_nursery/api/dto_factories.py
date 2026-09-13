@@ -6,6 +6,7 @@ from showcases.plant_nursery.application.use_cases import (
     QuoteDTO,
     CreateCategoryDTO,
     MoveCategoryDTO,
+    ListPlantsByCategoryDTO,
 )
 
 
@@ -82,16 +83,42 @@ def move_category_dto_factory(data: Dict[str, Any]) -> MoveCategoryDTO:
     body = _get_body(data)
     path = _get_path_params(data)
     cat_id = path.get("id") or body.get("id") or data.get("id")
-    # parent_id can be None (move to root) - need to distinguish missing vs explicit None
     if "parent_id" in body:
         parent_id = body.get("parent_id")
     else:
-        # if body is empty and parent_id in top level
         parent_id = data.get("parent_id")
-        if parent_id is None and body == data:
-            # explicit null already None
-            pass
     return MoveCategoryDTO(
         id=str(cat_id) if cat_id else None,
         parent_id=parent_id,
+    )
+
+
+def list_plants_by_category_dto_factory(
+    data: Dict[str, Any],
+) -> ListPlantsByCategoryDTO:
+    path = _get_path_params(data)
+    query = _get_query(data)
+    body = _get_body(data)
+
+    cat_id = path.get("id") or body.get("id") or query.get("id") or data.get("id")
+
+    raw = None
+    if "include_descendants" in query:
+        raw = query.get("include_descendants")
+    elif "include_descendants" in body:
+        raw = body.get("include_descendants")
+    elif "include_descendants" in data:
+        raw = data.get("include_descendants")
+
+    include = False
+    if isinstance(raw, bool):
+        include = raw
+    elif isinstance(raw, str):
+        include = raw.lower() in ("true", "1", "yes", "on")
+    elif raw is not None:
+        include = bool(raw)
+
+    return ListPlantsByCategoryDTO(
+        id=str(cat_id) if cat_id else None,
+        include_descendants=include,
     )
