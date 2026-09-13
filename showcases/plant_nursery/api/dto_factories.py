@@ -5,6 +5,7 @@ from showcases.plant_nursery.application.use_cases import (
     FrostFilterDTO,
     QuoteDTO,
     CreateCategoryDTO,
+    MoveCategoryDTO,
 )
 
 
@@ -21,6 +22,15 @@ def _get_query(data: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(q, dict):
         return q
     return data
+
+
+def _get_path_params(data: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    pp = data.get("path_params")
+    if isinstance(pp, dict):
+        return pp
+    return {}
 
 
 def add_plant_dto_factory(data: Dict[str, Any]) -> AddPlantDTO:
@@ -65,4 +75,23 @@ def create_category_dto_factory(data: Dict[str, Any]) -> CreateCategoryDTO:
         slug=body.get("slug"),
         parent_id=body.get("parent_id"),
         id=body.get("id"),
+    )
+
+
+def move_category_dto_factory(data: Dict[str, Any]) -> MoveCategoryDTO:
+    body = _get_body(data)
+    path = _get_path_params(data)
+    cat_id = path.get("id") or body.get("id") or data.get("id")
+    # parent_id can be None (move to root) - need to distinguish missing vs explicit None
+    if "parent_id" in body:
+        parent_id = body.get("parent_id")
+    else:
+        # if body is empty and parent_id in top level
+        parent_id = data.get("parent_id")
+        if parent_id is None and body == data:
+            # explicit null already None
+            pass
+    return MoveCategoryDTO(
+        id=str(cat_id) if cat_id else None,
+        parent_id=parent_id,
     )

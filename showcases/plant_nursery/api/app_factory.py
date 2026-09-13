@@ -8,12 +8,14 @@ from showcases.plant_nursery.api.dto_factories import (
     quote_dto_factory,
     frost_filter_dto_factory,
     create_category_dto_factory,
+    move_category_dto_factory,
 )
 from showcases.plant_nursery.application.use_cases import (
     AddPlantUseCase,
     ListFrostResistantUseCase,
     QuoteUseCase,
     CreateCategoryUseCase,
+    MoveCategoryUseCase,
 )
 
 _default_service: Optional[PlantNurseryCatalogService] = None
@@ -21,6 +23,7 @@ _default_service: Optional[PlantNurseryCatalogService] = None
 
 def _get_default_repo():
     from tests.showcases.plant_nursery.conftest import InMemoryCategoryRepository
+
     return InMemoryCategoryRepository()
 
 
@@ -47,6 +50,10 @@ def _make_use_case_map(
         ("POST", "/categories"): (
             CreateCategoryUseCase(category_repo=service.category_repo),
             create_category_dto_factory,
+        ),
+        ("PUT", "/categories/{id}/parent"): (
+            MoveCategoryUseCase(category_repo=service.category_repo),
+            move_category_dto_factory,
         ),
     }
 
