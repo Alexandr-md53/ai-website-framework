@@ -11,6 +11,7 @@ from showcases.plant_nursery.api.dto_factories import (
     move_category_dto_factory,
     list_plants_by_category_dto_factory,
     add_plant_image_dto_factory,
+    get_plant_images_dto_factory,
 )
 from showcases.plant_nursery.application.use_cases import (
     AddPlantUseCase,
@@ -20,6 +21,7 @@ from showcases.plant_nursery.application.use_cases import (
     MoveCategoryUseCase,
     ListPlantsByCategoryUseCase,
     AddPlantImageUseCase,
+    GetPlantImagesUseCase,
 )
 
 _default_service: Optional[PlantNurseryCatalogService] = None
@@ -66,6 +68,10 @@ def _make_use_case_map(
         ("POST", "/plants/{id}/images"): (
             AddPlantImageUseCase(catalog_service=service),
             add_plant_image_dto_factory,
+        ),
+        ("GET", "/plants/{id}/images"): (
+            GetPlantImagesUseCase(catalog_service=service),
+            get_plant_images_dto_factory,
         ),
     }
 

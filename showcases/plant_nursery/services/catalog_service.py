@@ -79,7 +79,6 @@ class PlantNurseryCatalogService:
         return None
 
     def add_image_to_plant(self, plant_id: uuid.UUID, image_id: str) -> Dict[str, Any]:
-        # validate image_id is UUID
         try:
             uuid.UUID(str(image_id))
         except Exception:
@@ -105,4 +104,16 @@ class PlantNurseryCatalogService:
             "main_image_id": plant.main_image_id,
             "images": list(gallery),
             "gallery": list(gallery),
+        }
+
+    def get_images(self, plant_id: uuid.UUID) -> Dict[str, Any]:
+        plant = self._find_plant(plant_id)
+        if not plant:
+            raise ValueError("validation.not_found:id")
+        gallery = self._gallery.get(plant_id, [])
+        return {
+            "id": str(plant.id),
+            "images": list(gallery),
+            "main_image_id": plant.main_image_id,
+            "count": len(gallery),
         }

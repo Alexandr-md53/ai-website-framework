@@ -65,6 +65,11 @@ class AddPlantImageDTO:
     image_id: Optional[str] = None
 
 
+@dataclass
+class GetPlantImagesDTO:
+    id: Optional[str] = None
+
+
 def _run_async(coro):
     def _run_in_new_loop():
         new_loop = asyncio.new_event_loop()
@@ -629,7 +634,6 @@ class AddPlantImageUseCase:
                     "success": False,
                 }
 
-            # Validate image_id format
             try:
                 uuid.UUID(str(dto.image_id))
             except Exception:
@@ -697,6 +701,89 @@ class AddPlantImageUseCase:
                     },
                     "success": False,
                 }
+
+        except ValueError as e:
+            return {
+                "status": 400,
+                "json": {
+                    "success": False,
+                    "error": str(e),
+                    "code": "VALIDATION_ERROR",
+                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
+                },
+                "success": False,
+            }
+
+
+class GetPlantImagesUseCase:
+    def __init__(self, catalog_service):
+        self._service = catalog_service
+
+    def execute(self, dto: GetPlantImagesDTO):
+        try:
+            if not dto.id:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+            try:
+                plant_id = uuid.UUID(dto.id) if isinstance(dto.id, str) else dto.id
+            except Exception:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+
+            try:
+                result = self._service.get_images(plant_id)
+                return result
+            except ValueError as ve:
+                msg = str(ve)
+                if "not_found" in msg:
+                    return {
+                        "status": 400,
+                        "json": {
+                            "success": False,
+                            "error": "validation.not_found",
+                            "code": "VALIDATION_ERROR",
+                            "errors": [
+                                {
+                                    "code": "VALIDATION_ERROR",
+                                    "field": "id",
+                                    "message": "validation.not_found",
+                                    "message_key": "validation.not_found",
+                                }
+                            ],
+                        },
+                        "success": False,
+                    }
+                raise
 
         except ValueError as e:
             return {
