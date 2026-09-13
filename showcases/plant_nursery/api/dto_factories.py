@@ -4,6 +4,7 @@ from showcases.plant_nursery.application.use_cases import (
     AddPlantDTO,
     FrostFilterDTO,
     QuoteDTO,
+    CreateCategoryDTO,
 )
 
 
@@ -19,7 +20,6 @@ def _get_query(data: Dict[str, Any]) -> Dict[str, Any]:
     q = data.get("query")
     if isinstance(q, dict):
         return q
-    # fallback: top-level may contain min_temp directly for GET
     return data
 
 
@@ -39,14 +39,13 @@ def add_plant_dto_factory(data: Dict[str, Any]) -> AddPlantDTO:
 def frost_filter_dto_factory(data: Dict[str, Any]) -> FrostFilterDTO:
     query = _get_query(data)
     body = _get_body(data)
-    # support both query and direct
     min_temp_raw = query.get("min_temp")
     if min_temp_raw is None:
         min_temp_raw = body.get("min_temp")
     if min_temp_raw is None:
         min_temp_raw = data.get("min_temp")
     if min_temp_raw is None:
-        min_temp_raw = -100  # default show all if not supplied
+        min_temp_raw = -100
     return FrostFilterDTO(min_temp=int(min_temp_raw))
 
 
@@ -56,4 +55,14 @@ def quote_dto_factory(data: Dict[str, Any]) -> QuoteDTO:
         unit_price=str(body.get("unit_price")),
         quantity=int(body.get("quantity", 0) or 0),
         discount_policy=str(body.get("discount_policy", "NONE")),
+    )
+
+
+def create_category_dto_factory(data: Dict[str, Any]) -> CreateCategoryDTO:
+    body = _get_body(data)
+    return CreateCategoryDTO(
+        name=body.get("name"),
+        slug=body.get("slug"),
+        parent_id=body.get("parent_id"),
+        id=body.get("id"),
     )
