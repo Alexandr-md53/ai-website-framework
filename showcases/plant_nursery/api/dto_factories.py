@@ -7,6 +7,7 @@ from showcases.plant_nursery.application.use_cases import (
     CreateCategoryDTO,
     MoveCategoryDTO,
     ListPlantsByCategoryDTO,
+    AddPlantImageDTO,
 )
 
 
@@ -121,4 +122,18 @@ def list_plants_by_category_dto_factory(
     return ListPlantsByCategoryDTO(
         id=str(cat_id) if cat_id else None,
         include_descendants=include,
+    )
+
+
+def add_plant_image_dto_factory(data: Dict[str, Any]) -> AddPlantImageDTO:
+    body = _get_body(data)
+    path = _get_path_params(data)
+    query = _get_query(data)
+
+    plant_id = path.get("id") or body.get("id") or query.get("id") or data.get("id")
+    image_id = body.get("image_id") or query.get("image_id") or data.get("image_id")
+
+    return AddPlantImageDTO(
+        id=str(plant_id) if plant_id else None,
+        image_id=str(image_id) if image_id else None,
     )

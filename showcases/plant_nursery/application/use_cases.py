@@ -59,6 +59,12 @@ class ListPlantsByCategoryDTO:
     include_descendants: bool = False
 
 
+@dataclass
+class AddPlantImageDTO:
+    id: Optional[str] = None
+    image_id: Optional[str] = None
+
+
 def _run_async(coro):
     def _run_in_new_loop():
         new_loop = asyncio.new_event_loop()
@@ -545,6 +551,152 @@ class ListPlantsByCategoryUseCase:
                 for p in plants
             ]
             return result
+
+        except ValueError as e:
+            return {
+                "status": 400,
+                "json": {
+                    "success": False,
+                    "error": str(e),
+                    "code": "VALIDATION_ERROR",
+                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
+                },
+                "success": False,
+            }
+
+
+class AddPlantImageUseCase:
+    def __init__(self, catalog_service):
+        self._service = catalog_service
+
+    def execute(self, dto: AddPlantImageDTO):
+        try:
+            if not dto.id:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+            try:
+                plant_id = uuid.UUID(dto.id) if isinstance(dto.id, str) else dto.id
+            except Exception:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+
+            if not dto.image_id:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "image_id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+
+            # Validate image_id format
+            try:
+                uuid.UUID(str(dto.image_id))
+            except Exception:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found",
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": "image_id",
+                                "message": "validation.not_found",
+                                "message_key": "validation.not_found",
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
+
+            try:
+                result = self._service.add_image_to_plant(plant_id, str(dto.image_id))
+                return result
+            except ValueError as ve:
+                msg = str(ve)
+                field = "id"
+                code = "validation.not_found"
+                if "max_limit" in msg:
+                    field = "image_id"
+                    code = "validation.max_limit"
+                    return {
+                        "status": 400,
+                        "json": {
+                            "success": False,
+                            "error": code,
+                            "code": "VALIDATION_ERROR",
+                            "errors": [
+                                {
+                                    "code": "VALIDATION_ERROR",
+                                    "field": field,
+                                    "message": code,
+                                    "message_key": code,
+                                }
+                            ],
+                        },
+                        "success": False,
+                    }
+                if "image_id" in msg:
+                    field = "image_id"
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": code,
+                        "code": "VALIDATION_ERROR",
+                        "errors": [
+                            {
+                                "code": "VALIDATION_ERROR",
+                                "field": field,
+                                "message": code,
+                                "message_key": code,
+                            }
+                        ],
+                    },
+                    "success": False,
+                }
 
         except ValueError as e:
             return {

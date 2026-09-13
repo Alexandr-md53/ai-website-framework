@@ -1,6 +1,6 @@
 # coding: utf-8, ASCII only
 from decimal import Decimal
-from typing import Any, List, Set
+from typing import Any, List, Set, Dict
 import uuid
 
 from showcases.plant_nursery.domain.plant import Plant
@@ -13,6 +13,7 @@ class PlantNurseryCatalogService:
         self.category_repo = category_repo
         self.price_calculator = PriceCalculator()
         self._plants: List[Plant] = []
+        self._gallery: Dict[uuid.UUID, List[str]] = {}
 
     async def add_plant(self, plant: Plant) -> Plant:
         category = self.category_repo.get(plant.category_id)
@@ -70,3 +71,38 @@ class PlantNurseryCatalogService:
             return [p for p in self._plants if p.category_id == category_id]
         allowed = self._collect_descendant_ids(category_id)
         return [p for p in self._plants if p.category_id in allowed]
+
+    def _find_plant(self, plant_id: uuid.UUID) -> Plant:
+        for p in self._plants:
+            if p.id == plant_id:
+                return p
+        return None
+
+    def add_image_to_plant(self, plant_id: uuid.UUID, image_id: str) -> Dict[str, Any]:
+        # validate image_id is UUID
+        try:
+            uuid.UUID(str(image_id))
+        except Exception:
+            raise ValueError("validation.not_found:image_id")
+
+        plant = self._find_plant(plant_id)
+        if not plant:
+            raise ValueError("validation.not_found:id")
+
+        gallery = self._gallery.get(plant_id, [])
+        if len(gallery) >= 5:
+            raise ValueError("validation.max_limit")
+
+        if image_id not in gallery:
+            gallery.append(str(image_id))
+            self._gallery[plant_id] = gallery
+
+        if not plant.main_image_id:
+            plant.main_image_id = str(image_id)
+
+        return {
+            "id": str(plant.id),
+            "main_image_id": plant.main_image_id,
+            "images": list(gallery),
+            "gallery": list(gallery),
+        }
