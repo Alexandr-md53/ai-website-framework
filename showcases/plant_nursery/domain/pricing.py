@@ -26,7 +26,12 @@ class PriceCalculator:
         if quantity <= 0:
             raise ValueError("Quantity must be greater than zero")
 
-        discount_rate = self._DISCOUNTS.get(discount_policy, Decimal("0.00"))
+        # C14.4: VOLUME threshold >=10
+        if discount_policy == DiscountPolicy.VOLUME and quantity < 10:
+            discount_rate = Decimal("0.00")
+        else:
+            discount_rate = self._DISCOUNTS.get(discount_policy, Decimal("0.00"))
+
         subtotal = unit_price * Decimal(quantity)
         total = subtotal * (Decimal("1.00") - discount_rate)
 
