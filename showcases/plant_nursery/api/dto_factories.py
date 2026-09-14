@@ -10,6 +10,7 @@ from showcases.plant_nursery.application.use_cases import (
     AddPlantImageDTO,
     GetPlantImagesDTO,
     RemovePlantImageDTO,
+    UpdatePlantStockDTO,
 )
 
 
@@ -180,4 +181,18 @@ def remove_plant_image_dto_factory(data: Dict[str, Any]) -> RemovePlantImageDTO:
     return RemovePlantImageDTO(
         id=str(plant_id) if plant_id else None,
         image_id=str(image_id) if image_id else None,
+    )
+
+
+def update_plant_stock_dto_factory(data: Dict[str, Any]) -> UpdatePlantStockDTO:
+    body = _get_body(data)
+    path = _get_path_params(data)
+    plant_id = path.get("id") or body.get("id") or data.get("id")
+    qty = body.get("stock_quantity")
+    if qty is None:
+        q = _get_query(data)
+        qty = q.get("stock_quantity")
+    return UpdatePlantStockDTO(
+        id=str(plant_id) if plant_id else None,
+        stock_quantity=qty,
     )

@@ -1,4 +1,4 @@
-# coding: utf-8, ASCII only
+﻿# coding: utf-8, ASCII only
 from decimal import Decimal
 from typing import Any, List, Set, Dict
 import uuid
@@ -77,6 +77,26 @@ class PlantNurseryCatalogService:
             if p.id == plant_id:
                 return p
         return None
+
+    
+    def update_stock(self, plant_id: uuid.UUID, stock_quantity: int) -> dict:
+        if stock_quantity is None:
+            raise ValueError("validation.invalid")
+        try:
+            qty = int(stock_quantity)
+        except Exception:
+            raise ValueError("validation.invalid")
+        if qty < 0:
+            raise ValueError("validation.invalid")
+        plant = self._find_plant(plant_id)
+        if not plant:
+            raise ValueError("validation.not_found:id")
+        plant.stock_quantity = qty
+        return {
+            "id": str(plant.id),
+            "stock_quantity": plant.stock_quantity,
+            "is_available": plant.stock_quantity > 0,
+        }
 
     def add_image_to_plant(self, plant_id: uuid.UUID, image_id: str) -> Dict[str, Any]:
         try:

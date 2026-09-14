@@ -929,3 +929,56 @@ class RemovePlantImageUseCase:
                 },
                 "success": False,
             }
+
+
+@dataclass
+class UpdatePlantStockDTO:
+    id: Optional[str] = None
+    stock_quantity: Optional[int] = None
+
+
+class UpdatePlantStockUseCase:
+    def __init__(self, catalog_service):
+        self._service = catalog_service
+
+    def execute(self, dto: UpdatePlantStockDTO):
+        try:
+            if dto.id is None:
+                raise ValueError("validation.not_found:id")
+            try:
+                pid = uuid.UUID(dto.id) if isinstance(dto.id, str) else dto.id
+            except Exception:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.not_found:id",
+                        "code": "VALIDATION_ERROR",
+                    },
+                    "success": False,
+                }
+            if dto.stock_quantity is None:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": "validation.invalid",
+                        "code": "VALIDATION_ERROR",
+                    },
+                    "success": False,
+                }
+            result = self._service.update_stock(pid, dto.stock_quantity)
+            return result
+        except ValueError as e:
+            msg = str(e)
+            if "not_found" in msg:
+                return {
+                    "status": 404,
+                    "json": {"success": False, "error": msg, "code": "NOT_FOUND"},
+                    "success": False,
+                }
+            return {
+                "status": 400,
+                "json": {"success": False, "error": msg, "code": "VALIDATION_ERROR"},
+                "success": False,
+            }

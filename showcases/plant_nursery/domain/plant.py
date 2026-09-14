@@ -27,3 +27,8 @@ class Plant:
     water_req: WateringRequirement = WateringRequirement.MODERATE
     frost_resistance: int = 0
     main_image_id: Optional[str] = None
+    stock_quantity: int = 0
+
+    @property
+    def is_available(self) -> bool:
+        return self.stock_quantity > 0
