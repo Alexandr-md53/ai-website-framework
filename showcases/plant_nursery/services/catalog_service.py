@@ -117,3 +117,38 @@ class PlantNurseryCatalogService:
             "main_image_id": plant.main_image_id,
             "count": len(gallery),
         }
+
+    def remove_image_from_plant(
+        self, plant_id: uuid.UUID, image_id: str
+    ) -> Dict[str, Any]:
+        try:
+            uuid.UUID(str(image_id))
+        except Exception:
+            raise ValueError("validation.not_found:image_id")
+
+        plant = self._find_plant(plant_id)
+        if not plant:
+            raise ValueError("validation.not_found:id")
+
+        gallery = self._gallery.get(plant_id, [])
+        if str(image_id) not in gallery:
+            raise ValueError("validation.not_found:image_id")
+
+        # remove
+        new_gallery = [i for i in gallery if i != str(image_id)]
+        self._gallery[plant_id] = new_gallery
+
+        # main promotion
+        if plant.main_image_id == str(image_id):
+            if new_gallery:
+                plant.main_image_id = new_gallery[0]
+            else:
+                plant.main_image_id = None
+
+        return {
+            "id": str(plant.id),
+            "images": list(new_gallery),
+            "main_image_id": plant.main_image_id,
+            "count": len(new_gallery),
+            "deleted": str(image_id),
+        }

@@ -9,6 +9,7 @@ from showcases.plant_nursery.application.use_cases import (
     ListPlantsByCategoryDTO,
     AddPlantImageDTO,
     GetPlantImagesDTO,
+    RemovePlantImageDTO,
 )
 
 
@@ -149,4 +150,34 @@ def get_plant_images_dto_factory(data: Dict[str, Any]) -> GetPlantImagesDTO:
 
     return GetPlantImagesDTO(
         id=str(plant_id) if plant_id else None,
+    )
+
+
+def remove_plant_image_dto_factory(data: Dict[str, Any]) -> RemovePlantImageDTO:
+    path = _get_path_params(data)
+    query = _get_query(data)
+    body = _get_body(data)
+
+    # Support both {id, image_id} and {plant_id, image_id} naming
+    plant_id = (
+        path.get("id")
+        or path.get("plant_id")
+        or body.get("id")
+        or body.get("plant_id")
+        or query.get("id")
+        or query.get("plant_id")
+        or data.get("id")
+        or data.get("plant_id")
+    )
+    image_id = (
+        path.get("image_id")
+        or path.get("imageId")
+        or body.get("image_id")
+        or query.get("image_id")
+        or data.get("image_id")
+    )
+
+    return RemovePlantImageDTO(
+        id=str(plant_id) if plant_id else None,
+        image_id=str(image_id) if image_id else None,
     )
