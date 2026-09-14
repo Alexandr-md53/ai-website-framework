@@ -9,9 +9,13 @@ from showcases.lawyer.application.submit_request_use_case import (
 from showcases.lawyer.application.list_requests_use_case import (
     ListConsultationRequestsUseCase,
 )
+from showcases.lawyer.application.update_request_status_use_case import (
+    UpdateConsultationStatusUseCase,
+)
 from showcases.lawyer.api.dto_factories import (
     submit_request_dto_factory,
     list_requests_dto_factory,
+    update_status_dto_factory,
 )
 
 _default_service: Optional[LawyerService] = None
@@ -29,9 +33,14 @@ def _make_use_case_map(
 ) -> Dict[Tuple[str, str], Tuple[Any, Callable[[Dict[str, Any]], Any]]]:
     submit_uc = SubmitConsultationRequestUseCase(service=service)
     list_uc = ListConsultationRequestsUseCase(service=service)
+    update_uc = UpdateConsultationStatusUseCase(service=service)
     return {
         ("POST", "/consultation-requests"): (submit_uc, submit_request_dto_factory),
         ("GET", "/consultation-requests"): (list_uc, list_requests_dto_factory),
+        ("PUT", "/consultation-requests/{id}/status"): (
+            update_uc,
+            update_status_dto_factory,
+        ),
     }
 
 
