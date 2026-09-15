@@ -148,6 +148,8 @@ class AddPlantUseCase:
                 else str(created.water_req),
                 "frost_resistance": created.frost_resistance,
                 "main_image_id": created.main_image_id,
+                "stock_quantity": getattr(created, "stock_quantity", 0),
+                "is_available": getattr(created, "stock_quantity", 0) > 0,
             }
         except ValueError as e:
             return {
@@ -570,6 +572,8 @@ class ListPlantsByCategoryUseCase:
                     "category_id": str(p.category_id),
                     "name": p.name,
                     "frost_resistance": p.frost_resistance,
+                    "stock_quantity": getattr(p, 'stock_quantity', 0),
+                    "is_available": getattr(p, 'stock_quantity', 0) > 0,
                 }
                 for p in plants
             ]
