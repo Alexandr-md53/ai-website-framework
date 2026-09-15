@@ -29,7 +29,8 @@ class AddPlantDTO:
 
 @dataclass
 class FrostFilterDTO:
-    min_temp: int
+    min_temp: Optional[int] = None
+    available: Optional[bool] = None
 
 
 @dataclass
@@ -166,13 +167,24 @@ class ListFrostResistantUseCase:
         self._service = catalog_service
 
     def execute(self, dto: FrostFilterDTO) -> List[Dict[str, Any]]:
-        plants = self._service.find_frost_resistant_plants(min_temp=dto.min_temp)
+        plants = self._service._plants
+        # frost filter only if explicitly provided
+        if dto.min_temp is not None:
+            plants = [p for p in plants if p.frost_resistance <= dto.min_temp]
+        # available filter
+        if dto.available is not None:
+            if dto.available:
+                plants = [p for p in plants if p.stock_quantity > 0]
+            else:
+                plants = [p for p in plants if p.stock_quantity <= 0]
         return [
             {
                 "id": str(p.id),
                 "category_id": str(p.category_id),
                 "name": p.name,
                 "frost_resistance": p.frost_resistance,
+                "stock_quantity": getattr(p, "stock_quantity", 0),
+                "is_available": getattr(p, "stock_quantity", 0) > 0,
             }
             for p in plants
         ]

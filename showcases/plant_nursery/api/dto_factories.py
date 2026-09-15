@@ -54,14 +54,42 @@ def add_plant_dto_factory(data: Dict[str, Any]) -> AddPlantDTO:
 def frost_filter_dto_factory(data: Dict[str, Any]) -> FrostFilterDTO:
     query = _get_query(data)
     body = _get_body(data)
+
     min_temp_raw = query.get("min_temp")
     if min_temp_raw is None:
         min_temp_raw = body.get("min_temp")
     if min_temp_raw is None:
         min_temp_raw = data.get("min_temp")
-    if min_temp_raw is None:
-        min_temp_raw = -100
-    return FrostFilterDTO(min_temp=int(min_temp_raw))
+
+    min_temp = None
+    if min_temp_raw is not None:
+        try:
+            min_temp = int(min_temp_raw)
+        except Exception:
+            min_temp = None
+
+    # available parsing
+    available_raw = None
+    if "available" in query:
+        available_raw = query.get("available")
+    elif "available" in body:
+        available_raw = body.get("available")
+    elif "available" in data:
+        available_raw = data.get("available")
+
+    available = None
+    if isinstance(available_raw, bool):
+        available = available_raw
+    elif isinstance(available_raw, str):
+        low = available_raw.lower()
+        if low in ("true", "1", "yes", "on"):
+            available = True
+        elif low in ("false", "0", "no", "off"):
+            available = False
+    elif available_raw is not None:
+        available = bool(available_raw)
+
+    return FrostFilterDTO(min_temp=min_temp, available=available)
 
 
 def quote_dto_factory(data: Dict[str, Any]) -> QuoteDTO:
