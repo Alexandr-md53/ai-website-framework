@@ -3,7 +3,6 @@ from ai_framework.api.router import Router, RouteNotFoundError, MethodNotAllowed
 
 
 def _serialize(obj):
-    """Рекурсивно преобразует объекты, dataclass, CRUDResult и CRUDError в JSON-сериализуемые типы."""
     if obj is None or isinstance(obj, (int, float, str, bool)):
         return obj
     if isinstance(obj, list):
@@ -53,12 +52,10 @@ class ResponseAdapter:
     def build(cls, *args, **kwargs):
         status = 200
         response = None
-
         if "status" in kwargs:
             status = kwargs["status"]
         if "response" in kwargs:
             response = kwargs["response"]
-
         if len(args) == 1:
             if isinstance(args[0], int):
                 status = args[0]
@@ -73,34 +70,27 @@ class ResponseAdapter:
                 status = args[1]
             else:
                 response = args[0]
-
         serialized = _serialize(response)
-
         success = True
         if isinstance(response, dict):
             success = response.get("success", True)
         elif hasattr(response, "success"):
             success = getattr(response, "success", True)
-
         res = {
             "status": status,
             "json": serialized,
             "success": success,
         }
-
         if isinstance(serialized, dict):
             for k, v in serialized.items():
                 if k not in res:
                     res[k] = v
-
         return res
 
     def adapt(self, raw_result, method=None):
         serialized_data = _serialize(raw_result)
-
         status_code = 200
         success = True
-
         if isinstance(raw_result, dict):
             status_code = raw_result.get("status", 200)
             success = raw_result.get("success", True)
@@ -129,7 +119,6 @@ class ResponseAdapter:
                     status_code = 201
                 else:
                     status_code = 200
-
         return {
             "status": status_code,
             "json": serialized_data,
@@ -145,7 +134,6 @@ class APIAdapter:
         else:
             self.registry = registry_or_router
             self.router = Router(registry_or_router)
-
         self.request_adapter = RequestAdapter()
         self.response_adapter = ResponseAdapter()
 
@@ -164,7 +152,6 @@ class APIAdapter:
                 },
                 "success": False,
             }
-
         adapted_request = self.request_adapter.adapt(method, path, http_request)
         try:
             raw_result = self.router.route(method, path, adapted_request)
@@ -188,6 +175,42 @@ class APIAdapter:
                     "error": str(e),
                     "code": "METHOD_NOT_ALLOWED",
                     "errors": [{"code": "METHOD_NOT_ALLOWED", "message": str(e)}],
+                },
+                "success": False,
+            }
+        except ValueError as e:
+            msg = str(e)
+            if "OUT_OF_STOCK" in msg or "INSUFFICIENT_STOCK" in msg:
+                return {
+                    "status": 400,
+                    "json": {
+                        "success": False,
+                        "error": msg,
+                        "code": "BAD_REQUEST",
+                        "errors": [{"code": "BAD_REQUEST", "message": msg}],
+                    },
+                    "success": False,
+                }
+            if msg.startswith("validation."):
+                code = "VALIDATION_ERROR" if "not_found" not in msg else "NOT_FOUND"
+                status = 404 if "not_found" in msg else 422
+                return {
+                    "status": status,
+                    "json": {
+                        "success": False,
+                        "error": msg,
+                        "code": code,
+                        "errors": [{"code": code, "message": msg}],
+                    },
+                    "success": False,
+                }
+            return {
+                "status": 400,
+                "json": {
+                    "success": False,
+                    "error": msg,
+                    "code": "BAD_REQUEST",
+                    "errors": [{"code": "BAD_REQUEST", "message": msg}],
                 },
                 "success": False,
             }
