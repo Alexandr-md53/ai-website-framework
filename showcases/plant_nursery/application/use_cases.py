@@ -197,10 +197,15 @@ class QuoteUseCase:
     def __init__(self, catalog_service):
         self._service = catalog_service
 
+    def __call__(self, dto: QuoteDTO) -> Dict[str, Any]:
+        return self.execute(dto)
+
     def execute(self, dto: QuoteDTO) -> Dict[str, Any]:
         try:
             # C16.4 stock validation if plant_id provided
-            plant_id_raw = getattr(dto, 'plant_id', None)
+            plant_id_raw = getattr(dto, "plant_id", None)
+            plant = None
+            plant_uuid = None
             if plant_id_raw:
                 try:
                     plant_uuid = uuid.UUID(str(plant_id_raw))
@@ -215,7 +220,6 @@ class QuoteUseCase:
                     raise ValueError("INSUFFICIENT_STOCK")
 
             unit_price = Decimal(str(dto.unit_price))
-            # ... остальной существующий код
             policy = (
                 DiscountPolicy(dto.discount_policy)
                 if isinstance(dto.discount_policy, str)
@@ -223,28 +227,25 @@ class QuoteUseCase:
             )
             total = self._service.calculate_quote(
                 unit_price=unit_price,
-                quantity=int(dto.quantity),
+                quantity=dto.quantity,
                 discount_policy=policy,
             )
+            # C16.5 decrement after successful quote
+            if plant is not None:
+                plant.stock_quantity -= dto.quantity
+                if plant.stock_quantity < 0:
+                    plant.stock_quantity = 0
+
             return {
                 "unit_price": str(unit_price),
-                "quantity": int(dto.quantity),
+                "quantity": dto.quantity,
                 "discount_policy": policy.value
                 if hasattr(policy, "value")
                 else str(policy),
                 "total": str(total),
             }
         except ValueError as e:
-            return {
-                "status": 400,
-                "json": {
-                    "success": False,
-                    "error": str(e),
-                    "code": "VALIDATION_ERROR",
-                    "errors": [{"code": "VALIDATION_ERROR", "message": str(e)}],
-                },
-                "success": False,
-            }
+            raise e
 
 
 class CreateCategoryUseCase:
