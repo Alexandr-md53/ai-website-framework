@@ -37,7 +37,8 @@ class FrostFilterDTO:
 class QuoteDTO:
     unit_price: str
     quantity: int
-    discount_policy: str = "NONE"
+    discount_policy: str
+    plant_id: Optional[str] = None
 
 
 @dataclass
@@ -198,7 +199,23 @@ class QuoteUseCase:
 
     def execute(self, dto: QuoteDTO) -> Dict[str, Any]:
         try:
+            # C16.4 stock validation if plant_id provided
+            plant_id_raw = getattr(dto, 'plant_id', None)
+            if plant_id_raw:
+                try:
+                    plant_uuid = uuid.UUID(str(plant_id_raw))
+                except Exception:
+                    raise ValueError("validation.not_found:plant_id")
+                plant = self._service._find_plant(plant_uuid)
+                if not plant:
+                    raise ValueError("validation.not_found:plant_id")
+                if plant.stock_quantity == 0:
+                    raise ValueError("OUT_OF_STOCK")
+                if dto.quantity > plant.stock_quantity:
+                    raise ValueError("INSUFFICIENT_STOCK")
+
             unit_price = Decimal(str(dto.unit_price))
+            # ... остальной существующий код
             policy = (
                 DiscountPolicy(dto.discount_policy)
                 if isinstance(dto.discount_policy, str)
@@ -572,8 +589,8 @@ class ListPlantsByCategoryUseCase:
                     "category_id": str(p.category_id),
                     "name": p.name,
                     "frost_resistance": p.frost_resistance,
-                    "stock_quantity": getattr(p, 'stock_quantity', 0),
-                    "is_available": getattr(p, 'stock_quantity', 0) > 0,
+                    "stock_quantity": getattr(p, "stock_quantity", 0),
+                    "is_available": getattr(p, "stock_quantity", 0) > 0,
                 }
                 for p in plants
             ]

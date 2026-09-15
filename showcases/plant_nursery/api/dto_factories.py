@@ -98,6 +98,7 @@ def quote_dto_factory(data: Dict[str, Any]) -> QuoteDTO:
         unit_price=str(body.get("unit_price")),
         quantity=int(body.get("quantity", 0) or 0),
         discount_policy=str(body.get("discount_policy", "NONE")),
+        plant_id=body.get("plant_id"),
     )
 
 
