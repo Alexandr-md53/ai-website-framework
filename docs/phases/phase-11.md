@@ -1,0 +1,11 @@
+Phase 11 — API Pipeline & Product Assembly
+C6.1 fastapi factory create_app(registry=None) (449)
+C6.2 middlewares+health+lifespan passthrough (454)
+C7.2 application boundary freeze (464)
+C7.3 product execution boundary freeze (477)
+C8.1 wiring contract 8 tests (485)
+C8.2 EndpointPipelineAdapter (489)
+C9.1 fastapi+pipeline wiring 6 tests canonical crud.contracts (495)
+C9.2 endpoint pipeline registration helper 5 tests (500)
+C9.3 full fastapi wiring via helper 4 tests (504)
+C10.1 product assembly factory metadata->C9.2->C6 no fs scan new file only 6 tests 510 (phase-11-closed)
