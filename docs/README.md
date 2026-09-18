@@ -35,3 +35,4 @@ API: FastAPI factory create_app(registry=None) over frozen EndpointRegistry/Rout
 Pipeline: EndpointPipelineAdapter (dto_factory+context_factory+pipeline.execute)
 Stock domain: Plant.stock_quantity:int, Plant.is_available:bool (derived quantity>0)
 Quote: validates OUT_OF_STOCK / INSUFFICIENT_STOCK → 400, decrements stock on success
+- architecture/capability-traceability-16.5.md — Strict traceability v0.2: impl → contract → test → boundary (337 files audit)
