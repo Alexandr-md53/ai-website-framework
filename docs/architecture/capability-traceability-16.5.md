@@ -108,13 +108,122 @@ Contract: C14.1 6e103bb 543, C14.2 48e1cbd 546, C14.3 d7b53af 550, docs/contract
 Tests: test_c14_1..3, tests/showcases/plant_nursery/test_catalog_service.py
 Boundary: SHOWCASE-SPECIFIC — works with image_id list, not generic image gallery subsystem
 Limitation: SHOWCASE-SPECIFIC
-9. Publishing / Static Website Generation
-Publisher
-Impl: NOT FOUND in ai_framework/ — no publisher/ directory. Historical reference plugins/telegram/publisher.py deleted in Phase 9.1. Only ai_framework/showcase_generator.py generates manifest.json/showcase structure.
-Contract: Phase 9 claims UseCases -> Pipeline -> CRUD -> AssetManager -> Publisher as complete static website generation, but current code tree does not confirm
-Tests: None for generic publishing
-Boundary: MISSING
-Limitation: MISSING / NOT PROVEN — Framework proven as application/API/product framework with asset capabilities, but not as finished static-site publishing framework. This is the most important documentation vs code mismatch to fix as gap, not feature.
+9.CORRECTION PATCH for capability-traceability-16.5.md — Phase 16.5 v0.2.1
+Date: 2026-09-18
+Reason: User refined history — Publisher is HISTORICAL extension point, not generic capability
+9. Publishing / Static Website Generation — CORRECTED
+Legacy / Historical Publisher (Extension Concept)
+Publisher / external publication
+Status: HISTORICAL / EXTENSION CONCEPT (not Framework generic capability)
+Historical Implementation:
+plugins/telegram/publisher.py (deleted in phase-9-frozen-v2, recovered via git show phase-9-frozen-v2^)
+TelegramPublisherPlugin(PublisherPluginContract)
+get_metadata() -> {id: "telegram", supports_images, supports_buttons, supports_html}
+validate(publication: dict) -> bool — title/text/image_required checks
+publish(publication, settings) -> bool — Settings TELEGRAM_BOT_TOKEN/CHAT_ID -> _build_message HTML -> _build_keyboard inline_keyboard -> _send_photo/_send_text via requests.post
+framework/core/contracts.py (deleted with framework/ directory)
+PublisherContract(FrameworkComponent) — publish(data), execute(data) -> publish(data)
+Contract: legacy PublisherPluginContract from framework.core.contracts, legacy framework.core.exceptions.PluginExecutionError, ValidationError
+Boundary: external plugin / legacy framework — Telegram-specific social publication plugin, not static-site publisher
+Tests: none in current ai_framework/ (legacy tests test_framework_* removed)
+Limitation:
+Telegram-specific
+no static-site generation
+no generic publication model
+no current ai_framework integration (from framework.core.* -> broken)
+direct requests usage, no abstraction for delivery
+Reference useful for plugin metadata pattern and external delivery, but NOT as baseline for Website Publisher
+Generic Website Publisher (Current)
+Generic Website Publisher
+Status: MISSING
+Implementation: none — ai_framework/publisher/ directory does not exist in PROJECT_DUMP.md 337 files nor in git ls-tree phase-9-frozen-v2^ . Only listed as intended structure in START_HERE.md frozen v2 canonical structure, never created.
+Contract: none
+Tests: none
+Boundary: N/A
+Limitation: requires new current-framework design, see Publication Model below
+9.1 Publication Model — New Layer (Required before first new site)
+Why Publisher word is overloaded
+From user refinement:
+
+Legacy Publisher
+  |
+  └── TelegramPublisherPlugin
+          ├── PublisherPluginContract
+          ├── Settings
+          └── Telegram HTTP API
+
+This was: social publication plugin
+Not: generic publishing engine / static-site publisher
+Old docs (Phase 9, START_HERE.md) claimed pipeline:
+
+UseCases -> Pipeline -> CRUD -> AssetManager -> Publisher
+But this conflated 3 different capabilities under one word Publisher:
+
+External publication (Telegram, etc.)
+Static website generation (HTML/CSS/assets from content)
+Site output / deployment
+Current Framework (Proven)
+                 CURRENT FRAMEWORK
+                        |
+     +------------------+------------------+
+     |                  |                  |
+     v                  v                  v
+Application           CRUD              Assets
+ Pipeline          Validation           Metadata
+     |                  |                  |
+     +------------------+------------------+
+                        |
+                        v
+               [NEW CAPABILITY REQUIRED]
+               Publication Model
+                        |
+          +-------------+-------------+
+          v                           v
+    Website Output              External Publish
+          |                           |
+          v                           v
+    Site Generator              Publisher Plugin
+          |                           |
+          v                           v
+     HTML / CSS / assets        Telegram, etc.
+Website Output / Site Generator and Publisher Plugin are DIFFERENT.
+
+TelegramPublisherPlugin belongs to second branch.
+
+Fundamental question before new site
+What should Framework produce?
+Three fundamentally different architectures:
+
+A. Dynamic web application
+
+UseCase -> API -> Frontend -> browser
+B. Static website
+
+Domain -> Content/View Models -> Renderer -> HTML/CSS/assets -> output/
+C. Hybrid (most likely for AI Website Framework)
+
+API + static generation + assets + optional external publishers
+Old Telegram Publisher says nothing about A/B/C choice.
+
+Decision
+Do NOT start with Publisher.
+
+First define minimal capability set for first new site:
+
+Define Publication/Site Output contract
+Then decide if separate Publisher inside ai_framework is needed at all
+This avoids repeating old error where word Publisher in documentation meant several completely different capabilities.
+
+Proposed Files (for C17, not C16.6)
+ai_framework/publisher/  — DO NOT CREATE YET in C16.6
+  contracts.py — PublicationModel: SiteOutputContract vs ExternalPublishContract (separate)
+  engine.py — placeholder for future
+For now: keep as MISSING with this design note, do not implement Telegram-like plugin as baseline.
+
+This patch should be appended to docs/architecture/capability-traceability-16.5.md section 9, replacing old Publisher MISSING block.
+Generated: 2026-09-18
+
+
 10. Product Registry / CLI
 Product discovery
 Impl: ai_framework/api/registry.py::list_products(), get_product(), reads showcases/*/manifest.json, enrichment from pyproject.toml (pyproject_name/version/requires_python), lru_cache
