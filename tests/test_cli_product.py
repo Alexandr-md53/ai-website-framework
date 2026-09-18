@@ -1,5 +1,6 @@
+
 # CODING: utf-8, ASCII only
-"""C3.5 - CLI product/showcase contracts."""
+"""C3.5 - CLI product/showcase contracts — updated for cms_lite."""
 
 import subprocess
 import sys
@@ -22,6 +23,7 @@ def test_product_list_contains_three():
     assert "cafe" in out
     assert "lawyer" in out
     assert "plant_nursery" in out
+    assert "cms_lite" in out
 
 
 def test_showcase_list_contains_names():
@@ -30,11 +32,12 @@ def test_showcase_list_contains_names():
     assert "cafe" in out
     assert "lawyer" in out
     assert "plant_nursery" in out
-    assert "found 3" in out or "3" in out
+    assert "cms_lite" in out
+    assert "found 4" in out or "4" in out
 
 
 def test_showcase_info_real_manifest():
-    for name in ["cafe", "lawyer", "plant_nursery"]:
+    for name in ["cafe", "cms_lite", "lawyer", "plant_nursery"]:
         rc, out = _run_cli("showcase", "info", name)
         assert rc == 0, out
         assert name in out
@@ -50,8 +53,6 @@ def test_showcase_info_invalid():
 
 
 def test_b3_guard_no_showcase_imports():
-    # C3.3 B3: ai_framework/ must never import showcases as Python module
-    # Only real import statements count, not help text or string paths
     import re
 
     pattern_from = re.compile(r"^\s*from\s+showcases(\.| import)")
@@ -66,7 +67,6 @@ def test_b3_guard_no_showcase_imports():
             stripped = line.strip()
             if not stripped or stripped.startswith("#"):
                 continue
-            # Skip string literals that are dotted paths (allowed)
             if pattern_from.search(line) or pattern_import.search(line):
                 violations.append(f"{py}:{i}:{line.strip()}")
     assert not violations, f"B3 violations: {violations}"
