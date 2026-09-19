@@ -8,5 +8,7 @@ class Category:
     slug: str
     description: Optional[str] = None
     def validate(self):
-        if not self.name.strip() or not self.slug.strip():
-            raise ValueError("Category name/slug required")
+        if not self.name or not self.name.strip():
+            raise ValueError("validation.required:name")
+        if not self.slug or not self.slug.strip():
+            raise ValueError("validation.required:slug")

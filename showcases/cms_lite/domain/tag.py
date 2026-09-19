@@ -6,5 +6,7 @@ class Tag:
     name: str
     slug: str
     def validate(self):
-        if not self.name.strip():
-            raise ValueError("Tag name required")
+        if not self.name or not self.name.strip():
+            raise ValueError("validation.required:name")
+        if not self.slug or not self.slug.strip():
+            raise ValueError("validation.required:slug")

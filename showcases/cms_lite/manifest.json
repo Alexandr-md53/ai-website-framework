@@ -1,10 +1,11 @@
 {
   "name": "cms_lite",
   "product": "crud",
-  "version": "16.5-first-site-decision-A-v0.1",
+  "version": "16.5-cms-lite-phase2-e2e-v0.1",
   "package": "showcases.cms_lite",
-  "description": "Type A Dynamic CMS Lite — Site, Category, Item, Tag, Media, User/Role with draft/published workflow",
+  "description": "Type A Dynamic CMS Lite — CRUD + validation + publish/unpublish workflow + auth guard + public published-only read",
   "domain": ["category", "tag", "item", "media", "user", "item_status"],
   "metadata": "showcases.cms_lite.metadata.cms_metadata.get_cms_ui_schemas",
-  "services": ["showcases.cms_lite.services.cms_service.CmsLiteService"]
+  "services": ["showcases.cms_lite.services.cms_service.CmsLiteService"],
+  "excludes": ["publisher", "stock", "G1", "G2", "G12"]
 }
