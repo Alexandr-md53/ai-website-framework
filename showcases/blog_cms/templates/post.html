@@ -1,0 +1,10 @@
+{% extends "base.html" %} {% block content %}
+{{ post.title }}
+Category: {{ category_name }} | Author: {{ author_name }}
+
+{{ post.content }}
+{% if post.tag_ids %}
+Tags: {{ post.tag_ids|length }} tag(s)
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "base.html" %} {% block content %}
+Tag: {{ slug }}
+{% for p in posts %}
+{{ p.title }}
+{% endfor %}
+← Back to index {% endblock %}

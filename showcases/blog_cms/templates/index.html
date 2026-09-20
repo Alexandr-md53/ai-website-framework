@@ -1,0 +1,9 @@
+{% extends "base.html" %} {% block content %}
+Blog
+{% for p in posts %}
+{{ p.title }} — {{ p.slug }}
+{% endfor %}
+{% if posts|length == 0 %}
+No published posts yet.
+
+{% endif %} {% endblock %}
