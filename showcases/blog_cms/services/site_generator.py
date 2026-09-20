@@ -1,36 +1,29 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Dict
-import pathlib
+import pathlib, shutil
 from .blog_service import BlogCmsService
 from ..domain.models import Post
 
 
 @dataclass
 class GeneratedPage:
-    path: str  # relative: e.g., "index.html", "posts/hello-world/index.html"
+    path: str
     html: str
-    kind: str  # index | post | category | tag | rss | sitemap
+    kind: str
 
 
 class Renderer:
-    """Jinja renderer — pure, no IO, testable. Phase 6.1: replaces inline _base()"""
-
     def __init__(self, templates_dir: pathlib.Path | None = None):
-        # resolve templates dir: explicit or showcases/blog_cms/templates
         if templates_dir is None:
-            # try relative to this file
             here = pathlib.Path(__file__).resolve()
-            # showcases/blog_cms/services/ -> ../templates
             candidate = here.parent.parent / "templates"
-            if candidate.exists():
-                templates_dir = candidate
-            else:
-                # fallback to cwd showcases/blog_cms/templates
-                templates_dir = pathlib.Path("showcases/blog_cms/templates")
+            templates_dir = (
+                candidate
+                if candidate.exists()
+                else pathlib.Path("showcases/blog_cms/templates")
+            )
         self.templates_dir = pathlib.Path(templates_dir)
-
-        # Jinja env with fallback to inline if jinja2 not available
         try:
             from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -45,14 +38,12 @@ class Renderer:
             self._jinja = False
 
     def _seo_context(self, post_or_dict, title_fallback: str = "Blog") -> dict:
-        # Accept Post or dict
         if hasattr(post_or_dict, "to_dict"):
             d = post_or_dict.to_dict()
         elif isinstance(post_or_dict, dict):
             d = post_or_dict
         else:
             d = {}
-        # normalize SEO fields: prefer seo_title etc, fallback to title
         return {
             "title": d.get("title") or title_fallback,
             "seo_title": d.get("seo_title") or d.get("title") or title_fallback,
@@ -66,8 +57,6 @@ class Renderer:
         }
 
     def _inject_seo(self, html: str, seo_ctx: dict) -> str:
-        # Ensure SEO tags are present even if template is minimal/broken
-        # If <title> missing, inject
         if "<title>" not in html:
             inject = f"<title>{seo_ctx.get('seo_title', '')}</title>\n"
             if seo_ctx.get("seo_description"):
@@ -80,13 +69,11 @@ class Renderer:
                 inject += f'<meta property="og:description" content="{seo_ctx["og_description"]}">\n'
             if seo_ctx.get("canonical_url"):
                 inject += f'<link rel="canonical" href="{seo_ctx["canonical_url"]}">\n'
-            # prepend to html if no head, or insert after <head>
             if "<head>" in html:
                 html = html.replace("<head>", f"<head>\n{inject}", 1)
             else:
                 html = inject + html
         else:
-            # ensure other meta tags exist
             if seo_ctx.get("seo_description") and 'name="description"' not in html:
                 html = html.replace(
                     "</title>",
@@ -113,6 +100,18 @@ class Renderer:
                 )
         return html
 
+    def _ensure_post_links(self, html: str, posts: List[Post]) -> str:
+        missing = [p for p in posts if f"/posts/{p.slug}/" not in html]
+        if missing and posts:
+            fallback = "".join(
+                [f'<li><a href="/posts/{p.slug}/">{p.title}</a></li>' for p in posts]
+            )
+            if "</ul>" in html:
+                html = html.replace("</ul>", f"{fallback}</ul>", 1)
+            else:
+                html += f"<ul>{fallback}</ul>"
+        return html
+
     def render_post(self, post: Post, category_name: str, author_name: str) -> str:
         seo_ctx = self._seo_context(post, post.title)
         if self._jinja:
@@ -131,27 +130,12 @@ class Renderer:
                 return self._inject_seo(html, seo_ctx)
             except Exception:
                 pass
-        # fallback inline — guaranteed SEO
         return f"""<!doctype html><html><head><title>{seo_ctx["seo_title"]}</title>
 <meta name="description" content="{seo_ctx["seo_description"]}">
 <meta property="og:title" content="{seo_ctx["og_title"]}">
 <meta property="og:description" content="{seo_ctx["og_description"]}">
 <link rel="canonical" href="{seo_ctx["canonical_url"]}">
 </head><body><h1>{post.title}</h1><p>{category_name} / {author_name}</p><article>{post.content}</article></body></html>"""
-
-    def _ensure_post_links(self, html: str, posts: List[Post]) -> str:
-        # Guarantee that index/category/tag pages contain href="/posts/{slug}/"
-        # If missing, append fallback list
-        missing = [p for p in posts if f"/posts/{p.slug}/" not in html]
-        if missing and posts:
-            fallback = "".join(
-                [f'<li><a href="/posts/{p.slug}/">{p.title}</a></li>' for p in posts]
-            )
-            if "</ul>" in html:
-                html = html.replace("</ul>", f"{fallback}</ul>", 1)
-            else:
-                html += f"<ul>{fallback}</ul>"
-        return html
 
     def render_index(self, posts: List[Post]) -> str:
         seo_ctx = {
@@ -231,8 +215,6 @@ class Renderer:
 
 
 class SiteGenerator:
-    """G1/G2/G12: Domain -> Generator -> Renderer (Jinja) -> Output"""
-
     def __init__(self, service: BlogCmsService, renderer: Renderer):
         self.service = service
         self.renderer = renderer
@@ -240,19 +222,15 @@ class SiteGenerator:
     def generate(self) -> List[GeneratedPage]:
         pages: List[GeneratedPage] = []
         published = self.service.list_published()
-        # G1: index
         pages.append(
             GeneratedPage("index.html", self.renderer.render_index(published), "index")
         )
-        # G2: post detail
         for p in published:
             cat = self.service._categories.get(p.category_id)
             auth = self.service._authors.get(p.author_id)
-            # Resolve real category slug for correct interlink
             cat_name = cat.name if cat else ""
             cat_slug = cat.slug if cat else ""
             html = self.renderer.render_post(p, cat_name, auth.name if auth else "")
-            # Patch category slug in html if renderer used fallback lower name
             if cat_slug and cat_name:
                 html = html.replace(
                     f"/categories/{cat_name.lower().replace(' ', '-')}/",
@@ -260,7 +238,6 @@ class SiteGenerator:
                 )
             pages.append(GeneratedPage(f"posts/{p.slug}/index.html", html, "post"))
             p.html_content = html
-        # G12: taxonomy + rss/sitemap
         for cat in self.service.list_categories():
             posts = self.service.list_published(category_slug=cat.slug)
             pages.append(
@@ -290,8 +267,18 @@ class SiteGenerator:
         return pages
 
     def write(
-        self, pages: List[GeneratedPage], out_dir: pathlib.Path
+        self, pages: List[GeneratedPage], out_dir: pathlib.Path, clean: bool = True
     ) -> List[pathlib.Path]:
+        """
+        Phase 6.2: clean output for deterministic generation.
+        clean=True (default) removes out_dir before write to avoid garbage from previous runs.
+        Test app uses temp dirs, prod app uses showcases/blog_cms/output — both get deterministic state.
+        """
+        out_dir = pathlib.Path(out_dir)
+        if clean and out_dir.exists():
+            # Remove only files we manage, but for integrity we clean whole tree to guarantee no stale draft posts remain
+            shutil.rmtree(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
         written = []
         for pg in pages:
             fp = out_dir / pg.path
