@@ -18,6 +18,32 @@ from showcases.cms_lite.infrastructure.persistence_adapter import (
 )
 
 try:
+    from showcases.cms_lite.domain.media import Media
+except Exception:
+    # fallback minimal Media if domain/media.py not yet exists
+    from dataclasses import dataclass as _dataclass
+
+    @_dataclass
+    class Media:
+        id: uuid.UUID
+        filename: str
+        filepath: str
+        media_type: str = "image"
+        item_id: Optional[uuid.UUID] = None
+        alt_text: Optional[str] = None
+
+        def to_dict(self):
+            return {
+                "id": str(self.id),
+                "filename": self.filename,
+                "filepath": self.filepath,
+                "media_type": self.media_type,
+                "item_id": str(self.item_id) if self.item_id else None,
+                "alt_text": self.alt_text,
+            }
+
+
+try:
     from ai_framework.validation.engine import ValidationEngine
     from ai_framework.validation.providers.metadata import InMemoryMetadataProvider
     from ai_framework.validation.providers.persistence import (
@@ -60,6 +86,7 @@ class CmsLiteFrameworkWiredService:
         self._categories: Dict[uuid.UUID, Category] = {}
         self._tags: Dict[uuid.UUID, Tag] = {}
         self._items: Dict[uuid.UUID, Item] = {}
+        self._media: Dict[uuid.UUID, Media] = {}
         self._category_slugs: Dict[str, uuid.UUID] = {}
         self._tag_slugs: Dict[str, uuid.UUID] = {}
         self._item_slugs: Dict[str, uuid.UUID] = {}
@@ -111,8 +138,29 @@ class CmsLiteFrameworkWiredService:
     def _require_role(self, user: Optional[UserContext], allowed: List[UserRole]):
         if user is None:
             raise PermissionDeniedError("Unauthorized: no user context")
-        if user.role not in allowed:
-            raise PermissionDeniedError(f"Forbidden: role {user.role} not in {allowed}")
+        # Normalize role: allow str "editor" -> UserRole.EDITOR
+        role = user.role
+        if isinstance(role, str):
+            try:
+                role = UserRole(role.upper())
+            except Exception:
+                pass
+            # update context for downstream checks (optional)
+            try:
+                user.role = role
+            except Exception:
+                pass
+        if role not in allowed:
+            # try also compare by value for str vs enum
+            role_vals = [r.value if hasattr(r, "value") else str(r) for r in allowed]
+            role_str = role.value if hasattr(role, "value") else str(role)
+            if (
+                role_str.upper() not in [v.upper() for v in role_vals]
+                and role not in allowed
+            ):
+                raise PermissionDeniedError(
+                    f"Forbidden: role {user.role} not in {allowed}"
+                )
 
     def _is_slug_unique(
         self,
@@ -215,12 +263,30 @@ class CmsLiteFrameworkWiredService:
             raise ValidationError(f"validation.invalid_slug_format:slug={slug}")
         if not self._is_slug_unique(slug, self._item_slugs):
             raise ValidationError(f"validation.not_unique:slug={slug}")
+        # category_id may come as str -> normalize to UUID
+        if isinstance(category_id, str):
+            try:
+                category_id = uuid.UUID(category_id)
+            except Exception:
+                # allow lookup by slug
+                if category_id in self._category_slugs:
+                    category_id = self._category_slugs[category_id]
+                else:
+                    raise NotFoundError(f"Category {category_id} not found")
         if category_id not in self._categories:
             raise NotFoundError(f"Category {category_id} not found")
         if tag_ids:
+            norm_tags = []
             for tid in tag_ids:
+                if isinstance(tid, str):
+                    try:
+                        tid = uuid.UUID(tid)
+                    except Exception:
+                        continue
                 if tid not in self._tags:
                     raise NotFoundError(f"Tag {tid} not found")
+                norm_tags.append(tid)
+            tag_ids = norm_tags
         payload = {
             "title": title,
             "slug": slug,
@@ -264,6 +330,16 @@ class CmsLiteFrameworkWiredService:
         return item
 
     def _get_item(self, item_id: uuid.UUID) -> Item:
+        # allow str
+        if isinstance(item_id, str):
+            try:
+                item_id = uuid.UUID(item_id)
+            except Exception:
+                # try lookup by slug
+                if item_id in self._item_slugs:
+                    item_id = self._item_slugs[item_id]
+                else:
+                    raise NotFoundError(f"Item {item_id} not found")
         if item_id not in self._items:
             raise NotFoundError(f"Item {item_id} not found")
         return self._items[item_id]
@@ -334,6 +410,7 @@ class CmsLiteFrameworkWiredService:
             seo_description=src.seo_description,
             og_title=src.og_title,
             og_description=src.og_description,
+            canonical_url=getattr(src, "canonical_url", None),
         )
         self._items[dup.id] = dup
         self._item_slugs[dup.slug] = dup.id
@@ -356,18 +433,15 @@ class CmsLiteFrameworkWiredService:
     ) -> List[Item]:
         result = [i for i in self._items.values() if i.is_published()]
         if category_id:
+            if isinstance(category_id, str):
+                try:
+                    category_id = uuid.UUID(category_id)
+                except Exception:
+                    pass
             result = [i for i in result if i.category_id == category_id]
         if tag_id:
             result = [i for i in result if tag_id in i.tag_ids]
         return result
-
-    def search_published(self, query: str) -> List[Item]:
-        q = query.lower()
-        return [
-            i
-            for i in self.list_published()
-            if q in i.title.lower() or q in i.content.lower() or q in i.slug.lower()
-        ]
 
     def list_all_items(
         self, user: UserContext, status: Optional[ItemStatus] = None
@@ -391,6 +465,153 @@ class CmsLiteFrameworkWiredService:
     def get_item_admin(self, user: UserContext, item_id: uuid.UUID) -> Item:
         self._require_role(user, [UserRole.ADMIN, UserRole.EDITOR])
         return self._get_item(item_id)
+
+    def get_item(self, item_id: uuid.UUID) -> Item:
+        # public alias for _get_item
+        return self._get_item(item_id)
+
+    # ==================== Phase 5 SEO + Media ====================
+
+    def _validate_seo(
+        self, seo_title, seo_description, og_title, og_description, canonical_url
+    ):
+        if seo_title is not None and len(seo_title) > 70:
+            raise ValidationError(f"seo_title length {len(seo_title)} exceeds max 70")
+        if seo_description is not None and len(seo_description) > 160:
+            raise ValidationError(
+                f"seo_description length {len(seo_description)} exceeds max 160"
+            )
+        if og_title is not None and len(og_title) > 70:
+            raise ValidationError(f"og_title length {len(og_title)} exceeds max 70")
+        if og_description is not None and len(og_description) > 200:
+            raise ValidationError(
+                f"og_description length {len(og_description)} exceeds max 200"
+            )
+        if canonical_url is not None and canonical_url != "":
+            if not (
+                canonical_url.startswith("http://")
+                or canonical_url.startswith("https://")
+                or canonical_url.startswith("/")
+            ):
+                raise ValidationError(
+                    f"canonical_url must start with http://, https:// or / — got {canonical_url!r}"
+                )
+
+    def update_item_seo(
+        self,
+        user: UserContext,
+        item_id: uuid.UUID,
+        seo_title: Optional[str] = None,
+        seo_description: Optional[str] = None,
+        og_title: Optional[str] = None,
+        og_description: Optional[str] = None,
+        canonical_url: Optional[str] = None,
+    ) -> Item:
+        self._require_role(user, [UserRole.ADMIN, UserRole.EDITOR])
+        item = self._get_item(item_id)
+        self._validate_seo(
+            seo_title, seo_description, og_title, og_description, canonical_url
+        )
+
+        # Use domain method if exists, otherwise set directly
+        if hasattr(item, "update_seo"):
+            # Item.update_seo expects None = keep, "" = clear
+            item.update_seo(
+                seo_title=seo_title,
+                seo_description=seo_description,
+                og_title=og_title,
+                og_description=og_description,
+                canonical_url=canonical_url,
+            )
+        else:
+            if seo_title is not None:
+                item.seo_title = seo_title or None
+            if seo_description is not None:
+                item.seo_description = seo_description or None
+            if og_title is not None:
+                item.og_title = og_title or None
+            if og_description is not None:
+                item.og_description = og_description or None
+            if canonical_url is not None:
+                item.canonical_url = None if canonical_url == "" else canonical_url
+        return item
+
+    def create_media(
+        self,
+        user: UserContext,
+        filename: str,
+        filepath: str,
+        media_type: str = "image",
+        alt_text: Optional[str] = None,
+    ) -> Media:
+        self._require_role(user, [UserRole.ADMIN, UserRole.EDITOR])
+        if not filename:
+            raise ValidationError("filename required")
+        media_id = uuid.uuid4()
+        media = Media(
+            id=media_id,
+            filename=filename,
+            filepath=filepath,
+            media_type=media_type,
+            alt_text=alt_text,
+        )
+        self._media[media_id] = media
+        return media
+
+    def attach_media_to_item(
+        self, user: UserContext, item_id: uuid.UUID, media_id: uuid.UUID
+    ) -> Item:
+        self._require_role(user, [UserRole.ADMIN, UserRole.EDITOR])
+        item = self._get_item(item_id)
+        # media_id may be str
+        if isinstance(media_id, str):
+            try:
+                media_id = uuid.UUID(media_id)
+            except Exception:
+                raise NotFoundError(f"Media {media_id} not found")
+        if media_id not in self._media:
+            raise NotFoundError(f"Media {media_id} not found")
+        if media_id not in item.media_ids:
+            item.media_ids.append(media_id)
+        # bind
+        try:
+            self._media[media_id].item_id = item.id
+        except Exception:
+            pass
+        return item
+
+    def detach_media_from_item(
+        self, user: UserContext, item_id: uuid.UUID, media_id: uuid.UUID
+    ) -> Item:
+        self._require_role(user, [UserRole.ADMIN, UserRole.EDITOR])
+        item = self._get_item(item_id)
+        if isinstance(media_id, str):
+            try:
+                media_id = uuid.UUID(media_id)
+            except Exception:
+                # idempotent: if can't parse, just ensure not in list (by str compare)
+                item.media_ids = [
+                    mid for mid in item.media_ids if str(mid) != str(media_id)
+                ]
+                return item
+        if media_id in item.media_ids:
+            item.media_ids = [mid for mid in item.media_ids if mid != media_id]
+        if media_id in self._media:
+            try:
+                if getattr(self._media[media_id], "item_id", None) == item.id:
+                    self._media[media_id].item_id = None
+            except Exception:
+                pass
+        return item
+
+    def list_item_media(self, item_id: uuid.UUID) -> List[Media]:
+        item = self._get_item(item_id)
+        result = []
+        for mid in item.media_ids:
+            m = self._media.get(mid)
+            if m:
+                result.append(m)
+        return result
 
 
 CmsLiteService = CmsLiteFrameworkWiredService
