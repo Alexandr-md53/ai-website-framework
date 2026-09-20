@@ -7,11 +7,11 @@ from .generated_page import GeneratedPage
 
 class StaticSiteWriter:
     """
-    Framework-level generic writer — no blog knowledge.
+    Framework-level generic writer — no domain knowledge.
     Writes List[GeneratedPage] to out_dir with optional clean.
-    clean=True: removes out_dir before write (deterministic, no stale draft files)
+    clean=True: removes out_dir before write (deterministic, no stale files)
     clean=False: merges/overwrites, keeps existing unrelated files
-    Preserves relative paths: page.path is relative, e.g. "posts/<slug>/index.html"
+    Preserves relative paths: page.path is relative, e.g. "section/page/index.html"
     """
 
     def write(

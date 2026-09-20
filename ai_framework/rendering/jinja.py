@@ -6,13 +6,13 @@ from typing import Dict
 class JinjaTemplateRenderer:
     """
     Framework-level Jinja implementation of TemplateRendererProtocol.
-    Generic — knows only templates_dir + template_name + context, no blog semantics.
+    Generic — knows only templates_dir + template_name + context, no domain semantics.
     """
 
     def __init__(self, templates_dir: pathlib.Path | str | None = None):
         if templates_dir is None:
-            # fallback to cwd showcases/blog_cms/templates for backward compat, but caller should pass explicit
-            templates_dir = pathlib.Path("showcases/blog_cms/templates")
+            # generic fallback, caller should pass explicit dir
+            templates_dir = pathlib.Path("templates")
         self.templates_dir = pathlib.Path(templates_dir)
 
         try:
