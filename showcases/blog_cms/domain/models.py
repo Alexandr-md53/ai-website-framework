@@ -1,15 +1,13 @@
 from __future__ import annotations
-import re, uuid
+import uuid
 from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
 
-SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+from ai_framework.content import PublishStatus, Slug
 
-
-class PostStatus(str, Enum):
-    DRAFT = "DRAFT"
-    PUBLISHED = "PUBLISHED"
+PostStatus = PublishStatus
+SLUG_RE = None
 
 
 @dataclass
@@ -20,8 +18,7 @@ class Author:
     bio: Optional[str] = None
 
     def validate(self):
-        if not SLUG_RE.match(self.slug):
-            raise ValueError(f"invalid slug {self.slug}")
+        Slug(self.slug)
 
 
 @dataclass
@@ -32,8 +29,7 @@ class Category:
     description: Optional[str] = None
 
     def validate(self):
-        if not SLUG_RE.match(self.slug):
-            raise ValueError(f"invalid slug {self.slug}")
+        Slug(self.slug)
 
 
 @dataclass
@@ -43,14 +39,13 @@ class Tag:
     slug: str
 
     def validate(self):
-        if not SLUG_RE.match(self.slug):
-            raise ValueError(f"invalid slug {self.slug}")
+        Slug(self.slug)
 
 
 @dataclass
 class SeoMeta:
-    seo_title: Optional[str] = None  # max 70
-    seo_description: Optional[str] = None  # max 160
+    seo_title: Optional[str] = None
+    seo_description: Optional[str] = None
     og_title: Optional[str] = None
     og_description: Optional[str] = None
     canonical_url: Optional[str] = None
@@ -72,42 +67,54 @@ class SeoMeta:
 class Post:
     id: uuid.UUID
     title: str
-    slug: str
-    content: str  # markdown
+    slug: Slug
+    content: str
     category_id: uuid.UUID
     author_id: uuid.UUID
     tag_ids: List[uuid.UUID] = field(default_factory=list)
-    status: PostStatus = PostStatus.DRAFT
+    status: PublishStatus = PublishStatus.DRAFT
     seo: SeoMeta = field(default_factory=SeoMeta)
-    # generated
     html_content: Optional[str] = None
+
+    def __post_init__(self):
+        if isinstance(self.slug, str):
+            object.__setattr__(self, "slug", Slug(self.slug))
+        if not isinstance(self.status, PublishStatus):
+            try:
+                v = (
+                    self.status.value
+                    if hasattr(self.status, "value")
+                    else str(self.status)
+                )
+                object.__setattr__(self, "status", PublishStatus(v.lower()))
+            except Exception:
+                object.__setattr__(self, "status", PublishStatus.DRAFT)
 
     def validate_for_draft(self):
         if not self.title or len(self.title.strip()) < 3:
             raise ValueError("title too short")
-        if not SLUG_RE.match(self.slug):
-            raise ValueError(f"invalid slug {self.slug}")
+        Slug(str(self.slug))
         if len(self.content.strip()) < 20:
             raise ValueError("content too short for publish, min 20")
         self.seo.validate()
 
     def is_published(self) -> bool:
-        return self.status == PostStatus.PUBLISHED
+        return self.status == PublishStatus.PUBLISHED
 
     def publish(self):
         self.validate_for_draft()
         if len(self.content.strip()) < 20:
             raise ValueError("publish requires content >=20")
-        self.status = PostStatus.PUBLISHED
+        self.status = PublishStatus.PUBLISHED
 
     def unpublish(self):
-        self.status = PostStatus.DRAFT
+        self.status = PublishStatus.DRAFT
 
     def to_dict(self):
         return {
             "id": str(self.id),
             "title": self.title,
-            "slug": self.slug,
+            "slug": str(self.slug),
             "content": self.content,
             "category_id": str(self.category_id),
             "author_id": str(self.author_id),

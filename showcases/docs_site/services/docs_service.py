@@ -1,7 +1,13 @@
 from __future__ import annotations
 import uuid
 from typing import List, Dict, Optional
-from ..domain.models import DocPage, Section, Version, DocStatus, SeoMeta
+from ..domain.models import DocPage, Section, Version, SeoMeta
+
+from ai_framework.content import (
+    Slug,
+    PublishStatus,
+    list_published as framework_list_published,
+)
 
 
 class NotFoundError(Exception):
@@ -13,17 +19,15 @@ class ValidationError(Exception):
 
 
 class DocsService:
-    """In-memory docs domain — Type-B, similar to BlogCmsService but docs-specific"""
-
     def __init__(self):
         self._sections: Dict[uuid.UUID, Section] = {}
         self._versions: Dict[uuid.UUID, Version] = {}
         self._pages: Dict[uuid.UUID, DocPage] = {}
 
-    # Sections
     def create_section(self, name: str, slug: str, description: str = "") -> Section:
         if not name or not slug:
             raise ValidationError("name/slug required")
+        Slug(slug)
         sec = Section(id=uuid.uuid4(), name=name, slug=slug, description=description)
         self._sections[sec.id] = sec
         return sec
@@ -31,10 +35,10 @@ class DocsService:
     def list_sections(self) -> List[Section]:
         return list(self._sections.values())
 
-    # Versions
     def create_version(self, name: str, slug: str) -> Version:
         if not name or not slug:
             raise ValidationError("name/slug required")
+        Slug(slug)
         ver = Version(id=uuid.uuid4(), name=name, slug=slug)
         self._versions[ver.id] = ver
         return ver
@@ -42,7 +46,6 @@ class DocsService:
     def list_versions(self) -> List[Version]:
         return list(self._versions.values())
 
-    # Pages
     def create_page(
         self,
         title: str,
@@ -58,10 +61,11 @@ class DocsService:
             raise NotFoundError("section not found")
         if version_id and version_id not in self._versions:
             raise NotFoundError("version not found")
+        page_slug = Slug(slug)
         page = DocPage(
             id=uuid.uuid4(),
             title=title,
-            slug=slug,
+            slug=page_slug,
             content=content,
             section_id=section_id,
             version_id=version_id,
@@ -74,10 +78,17 @@ class DocsService:
         page = self._pages.get(page_id)
         if not page:
             raise NotFoundError("page not found")
-        page.status = DocStatus.PUBLISHED
+        page.publish()
         return page
 
-    def list_pages(self, status: DocStatus | None = None) -> List[DocPage]:
+    def unpublish_page(self, page_id: uuid.UUID) -> DocPage:
+        page = self._pages.get(page_id)
+        if not page:
+            raise NotFoundError("page not found")
+        page.unpublish()
+        return page
+
+    def list_pages(self, status: PublishStatus | None = None) -> List[DocPage]:
         if status:
             return [p for p in self._pages.values() if p.status == status]
         return list(self._pages.values())
@@ -85,7 +96,7 @@ class DocsService:
     def list_published(
         self, section_slug: str | None = None, version_slug: str | None = None
     ) -> List[DocPage]:
-        pages = [p for p in self._pages.values() if p.status == DocStatus.PUBLISHED]
+        pages = framework_list_published(self._pages.values())
         if section_slug:
             sec_ids = [s.id for s in self._sections.values() if s.slug == section_slug]
             pages = [p for p in pages if p.section_id in sec_ids]
@@ -95,8 +106,12 @@ class DocsService:
         return pages
 
     def get_published_by_slug(self, slug: str) -> DocPage:
+        try:
+            slug_str = str(Slug(slug))
+        except ValueError:
+            raise NotFoundError(f"doc {slug} not found")
         for p in self._pages.values():
-            if p.slug == slug and p.status == DocStatus.PUBLISHED:
+            if str(p.slug) == slug_str and p.is_published():
                 return p
         raise NotFoundError(f"doc {slug} not found")
 

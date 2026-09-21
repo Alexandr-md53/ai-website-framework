@@ -1,8 +1,14 @@
 from __future__ import annotations
-import uuid, re
+import uuid
 from typing import Dict, List, Optional
-from ..domain.models import Post, Category, Tag, Author, PostStatus, SeoMeta, SLUG_RE
+from ..domain.models import Post, Category, Tag, Author, SeoMeta
 from ..domain.user import UserContext, UserRole, PermissionDeniedError, PipelineContext
+
+from ai_framework.content import (
+    Slug,
+    PublishStatus,
+    list_published as framework_list_published,
+)
 
 
 class NotFoundError(Exception):
@@ -14,8 +20,6 @@ class ValidationError(Exception):
 
 
 class BlogCmsService:
-    """Type B domain service — in-memory, deterministic, no DB"""
-
     def __init__(self):
         self._categories: Dict[uuid.UUID, Category] = {}
         self._tags: Dict[uuid.UUID, Tag] = {}
@@ -28,7 +32,6 @@ class BlogCmsService:
             "post": {},
         }
 
-    # ---- Guards ----
     def _require(self, ctx: PipelineContext, allowed: List[UserRole]):
         if ctx.user.role not in allowed:
             raise PermissionDeniedError(f"Forbidden: {ctx.user.role} not in {allowed}")
@@ -39,7 +42,10 @@ class BlogCmsService:
             return True
         return idx[slug] == exclude if exclude else False
 
-    # ---- Category / Tag / Author ----
+    def _normalize_slug_str(self, raw: str) -> str:
+        s = Slug(raw)
+        return str(s)
+
     def create_category(
         self,
         ctx: PipelineContext,
@@ -48,46 +54,41 @@ class BlogCmsService:
         description: Optional[str] = None,
     ) -> Category:
         self._require(ctx, [UserRole.ADMIN, UserRole.EDITOR])
-        slug = slug.lower().strip()
-        if not SLUG_RE.match(slug):
-            raise ValidationError(f"invalid slug {slug}")
-        if not self._uniq("category", slug):
-            raise ValidationError(f"not unique {slug}")
-        cat = Category(id=uuid.uuid4(), name=name, slug=slug, description=description)
+        slug_str = self._normalize_slug_str(slug)
+        if not self._uniq("category", slug_str):
+            raise ValidationError(f"not unique {slug_str}")
+        cat = Category(
+            id=uuid.uuid4(), name=name, slug=slug_str, description=description
+        )
         cat.validate()
         self._categories[cat.id] = cat
-        self._slugs["category"][slug] = cat.id
+        self._slugs["category"][slug_str] = cat.id
         return cat
 
     def create_tag(self, ctx: PipelineContext, name: str, slug: str) -> Tag:
         self._require(ctx, [UserRole.ADMIN, UserRole.EDITOR])
-        slug = slug.lower().strip()
-        if not SLUG_RE.match(slug):
-            raise ValidationError(f"invalid slug {slug}")
-        if not self._uniq("tag", slug):
-            raise ValidationError(f"not unique {slug}")
-        tag = Tag(id=uuid.uuid4(), name=name, slug=slug)
+        slug_str = self._normalize_slug_str(slug)
+        if not self._uniq("tag", slug_str):
+            raise ValidationError(f"not unique {slug_str}")
+        tag = Tag(id=uuid.uuid4(), name=name, slug=slug_str)
         tag.validate()
         self._tags[tag.id] = tag
-        self._slugs["tag"][slug] = tag.id
+        self._slugs["tag"][slug_str] = tag.id
         return tag
 
     def create_author(
         self, ctx: PipelineContext, name: str, slug: str, bio: Optional[str] = None
     ) -> Author:
         self._require(ctx, [UserRole.ADMIN, UserRole.EDITOR])
-        slug = slug.lower().strip()
-        if not SLUG_RE.match(slug):
-            raise ValidationError(f"invalid slug {slug}")
-        if not self._uniq("author", slug):
-            raise ValidationError(f"not unique {slug}")
-        a = Author(id=uuid.uuid4(), name=name, slug=slug, bio=bio)
+        slug_str = self._normalize_slug_str(slug)
+        if not self._uniq("author", slug_str):
+            raise ValidationError(f"not unique {slug_str}")
+        a = Author(id=uuid.uuid4(), name=name, slug=slug_str, bio=bio)
         a.validate()
         self._authors[a.id] = a
-        self._slugs["author"][slug] = a.id
+        self._slugs["author"][slug_str] = a.id
         return a
 
-    # ---- Post CRUD + Workflow ----
     def create_post(
         self,
         ctx: PipelineContext,
@@ -100,11 +101,9 @@ class BlogCmsService:
         seo: Optional[SeoMeta] = None,
     ) -> Post:
         self._require(ctx, [UserRole.ADMIN, UserRole.EDITOR])
-        slug = slug.lower().strip()
-        if not SLUG_RE.match(slug):
-            raise ValidationError(f"invalid slug {slug}")
-        if not self._uniq("post", slug):
-            raise ValidationError(f"not unique {slug}")
+        slug_str = self._normalize_slug_str(slug)
+        if not self._uniq("post", slug_str):
+            raise ValidationError(f"not unique {slug_str}")
         if category_id not in self._categories:
             raise NotFoundError("category not found")
         if author_id not in self._authors:
@@ -116,7 +115,7 @@ class BlogCmsService:
         post = Post(
             id=uuid.uuid4(),
             title=title,
-            slug=slug,
+            slug=Slug(slug_str),
             content=content,
             category_id=category_id,
             author_id=author_id,
@@ -125,7 +124,7 @@ class BlogCmsService:
         )
         post.validate_for_draft()
         self._posts[post.id] = post
-        self._slugs["post"][slug] = post.id
+        self._slugs["post"][slug_str] = post.id
         return post
 
     def update_post_seo(
@@ -152,7 +151,7 @@ class BlogCmsService:
     def duplicate_post(self, ctx: PipelineContext, post_id: uuid.UUID) -> Post:
         self._require(ctx, [UserRole.ADMIN, UserRole.EDITOR])
         src = self._get_post(post_id)
-        base = f"{src.slug}-copy"
+        base = f"{str(src.slug)}-copy"
         cand = base
         c = 1
         while not self._uniq("post", cand):
@@ -161,12 +160,12 @@ class BlogCmsService:
         dup = Post(
             id=uuid.uuid4(),
             title=f"{src.title} (copy)",
-            slug=cand,
+            slug=Slug(cand),
             content=src.content,
             category_id=src.category_id,
             author_id=src.author_id,
             tag_ids=list(src.tag_ids),
-            status=PostStatus.DRAFT,
+            status=PublishStatus.DRAFT,
             seo=src.seo,
         )
         self._posts[dup.id] = dup
@@ -178,21 +177,20 @@ class BlogCmsService:
             raise NotFoundError(f"post {pid} not found")
         return self._posts[pid]
 
-    # Public read (published only)
     def get_published_by_slug(self, slug: str) -> Post:
-        slug = slug.lower().strip()
-        pid = self._slugs["post"].get(slug)
+        slug_str = self._normalize_slug_str(slug)
+        pid = self._slugs["post"].get(slug_str)
         if not pid:
-            raise NotFoundError(f"slug {slug} not found")
+            raise NotFoundError(f"slug {slug_str} not found")
         p = self._posts[pid]
         if not p.is_published():
-            raise NotFoundError(f"{slug} not published")
+            raise NotFoundError(f"{slug_str} not published")
         return p
 
     def list_published(
         self, category_slug: Optional[str] = None, tag_slug: Optional[str] = None
     ) -> List[Post]:
-        res = [p for p in self._posts.values() if p.is_published()]
+        res = framework_list_published(self._posts.values())
         if category_slug:
             cid = self._slugs["category"].get(category_slug)
             res = [p for p in res if p.category_id == cid] if cid else []
@@ -210,7 +208,7 @@ class BlogCmsService:
     def list_authors(self):
         return list(self._authors.values())
 
-    def list_posts(self, status: Optional[PostStatus] = None):
+    def list_posts(self, status: Optional[PublishStatus] = None):
         if status:
             return [p for p in self._posts.values() if p.status == status]
         return list(self._posts.values())
