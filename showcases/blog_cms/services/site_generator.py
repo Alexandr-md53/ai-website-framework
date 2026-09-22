@@ -3,15 +3,20 @@ from typing import List
 import pathlib
 
 from .blog_service import BlogCmsService
-from ..domain.models import Post
 from .blog_renderer import BlogRenderer
 
-# Framework primitives re-exported for backward compat
+# Re-export for backward compatibility with app_factory.py
+# Old code did: from .services.site_generator import SiteGenerator, Renderer, GeneratedPage
 from ai_framework.rendering import GeneratedPage, StaticSiteWriter
+
+# Compatibility aliases — app_factory imports Renderer from site_generator
+Renderer = BlogRenderer
+
+__all__ = ["BlogRenderer", "Renderer", "SiteGenerator", "GeneratedPage"]
 
 
 class SiteGenerator:
-    """G1/G2/G12: Domain -> Generator -> Renderer (Jinja) -> Output — now using framework primitives via BlogRenderer"""
+    """G1/G2/G12: Domain -> Generator -> Renderer (framework) -> Output via StaticSiteWriter (one FS boundary)"""
 
     def __init__(self, service: BlogCmsService, renderer: BlogRenderer):
         self.service = service
@@ -68,10 +73,5 @@ class SiteGenerator:
     def write(
         self, pages: List[GeneratedPage], out_dir: pathlib.Path, clean: bool = True
     ) -> List[pathlib.Path]:
+        # Security: single filesystem boundary — all writes via StaticSiteWriter
         return self._writer.write(pages, out_dir, clean=clean)
-
-
-# Backward compat: allow old import path
-from .blog_renderer import Renderer
-
-__all__ = ["SiteGenerator", "GeneratedPage", "Renderer"]

@@ -12,10 +12,7 @@ class StaticSiteWriter:
     clean=True: removes out_dir before write (deterministic, no stale files)
     clean=False: merges/overwrites, keeps existing unrelated files
     Preserves relative paths: page.path is relative, e.g. "section/page/index.html"
-
-    Safety:
-    - Rejects absolute, parent traversal, empty, drive letter
-    - Rejects duplicate paths (fail-fast, no silent overwrite) — Phase 7.2
+    Fail-fast on duplicate paths and FS safety violations.
     """
 
     def write(
@@ -29,17 +26,15 @@ class StaticSiteWriter:
             shutil.rmtree(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        # Phase 7.2: duplicate path fail-fast — before any FS write
+        # Fail-fast duplicate detection (Phase 7.2)
         seen = set()
         for pg in pages:
-            p = (pg.path or "").strip()
-            if not p:
-                continue
-            if p in seen:
-                raise ValueError(
-                    f"Duplicate GeneratedPage path detected (fail-fast): {p}"
-                )
-            seen.add(p)
+            norm = (pg.path or "").strip()
+            if not norm:
+                raise ValueError(f"Invalid GeneratedPage path (empty): {pg.path}")
+            if norm in seen:
+                raise ValueError(f"Duplicate GeneratedPage path: {pg.path}")
+            seen.add(norm)
 
         written: List[pathlib.Path] = []
         for pg in pages:
@@ -61,7 +56,7 @@ class StaticSiteWriter:
                 and "\\" in raw
             ):
                 raise ValueError(
-                    f"Invalid GeneratedPage path (must be relative, no.., no absolute): {pg.path}"
+                    f"Invalid GeneratedPage path (must be relative, no .., no absolute): {pg.path}"
                 )
             p = pathlib.Path(raw)
             if p.anchor:

@@ -1,61 +1,41 @@
-# Type B — Static / Generated Site
+Type B — Static Site: Domain → Generator → Renderer → Output
+Baseline: 195ae23 / extraction-rendering-primitives-v0.1-green
 
-## Overview
-Type B showcases generate static sites from domain state.
-Domain
-↓
-Generator (pure)
-↓
-List (immutable value object)
-↓
-StaticSiteWriter (I/O boundary, validated)
-↓
-filesystem[GeneratedPage]
+Contract
+Domain → Generator → Renderer → Output
+Components:
 
-## Primitives (ai_framework/rendering)
-- `GeneratedPage` — immutable: path (relative), html, kind
-- `SeoContext` + `SeoInjector` — generic SEO, no domain knowledge
-- `JinjaTemplateRenderer` — generic template_name + context
-- `StaticSiteWriter` — generic writer with safety: relative only, no.., no absolute, no duplicate paths (fail-fast)
-
-## StaticSiteGeneratorProtocol (Phase 7.2)
-Minimal contract justified by two independent consumers:
-- BlogSiteGenerator: posts/<slug>/, categories/<slug>/, tags/<slug>/, rss.xml, sitemap.xml
-- DocsSiteGenerator: guides/<slug>/, sections/<slug>/, versions/<slug>/, sitemap.xml
-
-```python
-class StaticSiteGeneratorProtocol(Protocol):
-    def generate(self) -> list[GeneratedPage]:...
-    Intentionally does NOT include write(). I/O is separate concern owned by StaticSiteWriter.
-
-Semantics (contract)
-Purity / FS independence:
-
-generate() must not access filesystem, network, or global state.
-Testable without temp dirs.
-Unique relative paths:
-
-generate() SHOULD produce unique relative paths (no.., no absolute, no empty).
-StaticSiteWriter MUST reject duplicate paths with ValueError (fail-fast, no silent overwrite).
-Determinism (contract, not immediate impl):
-
-Same domain state → same ordered List with identical content.[GeneratedPage]
-Current services using insertion-order dicts are acceptable as baseline as long as ordering is stable for same state.
-No requirement to rewrite domain services immediately for sorting; sorting can be added only if it does not change expected output.
-Empty content:
-
-Must not raise on empty published set.
-Returns at least index.html + sitemap.xml with zero entries (deterministic).
-URL independence:
-
-Framework does not know about posts/, guides/, categories/, tags/, sections/, versions/.
-Those conventions are owned by showcase-local Renderers.
-Showcase-local ownership
-BlogRenderer owns posts/, categories/, tags/, rss/sitemap
-DocsRenderer owns guides/, sections/, versions/, sitemap
-Both use same framework primitives
-Anti-goals
-No base class Generator
-No factory/registry
-No domain logic extraction in Phase 7.2
-No write() in protocol
+GeneratedPage — immutable VO: path (relative), html, kind — single output value object used by both blog_cms and docs_site
+TemplateRendererProtocol — render(template_name, context) -> str — generic, 1 method
+JinjaTemplateRenderer — framework impl of TemplateRendererProtocol
+SeoContext — pure data normalization (dict → SeoContext)
+SeoInjector — HTML transformation (html + SeoContext → html)
+StaticSiteWriter — one filesystem boundary, FS safety owned here
+StaticSiteGeneratorProtocol — generate() -> List[GeneratedPage] — structural, no write(), no isinstance base class
+Purity
+generate() is pure: same domain state (list_published) → same list of GeneratedPage, no I/O, no side effects
+render() is pure: template + context → HTML, no domain deps
+SeoContext.normalize() pure: dict → SeoContext
+SeoInjector.ensure_seo() pure: html + SeoContext → html
+Determinism / Same domain state
+Same domain state produces same output — deterministic generation, no timestamps, no random
+clean=True removes out_dir before write — no stale files, deterministic FS state
+Unique / duplicate fail-fast
+StaticSiteWriter must raise ValueError on duplicate paths (fail-fast) — prevents overwriting same file twice in one generation
+Duplicate detection via set of normalized paths
+FS independence
+Generator → GeneratedPage (domain owns URL semantics: posts/, guides/, categories/, sections/, versions/, tags/, rss, sitemap)
+Writer → filesystem (one FS boundary, FS safety: reject "..", "/", "", "C:", absolute, anchor, out_dir escape)
+No showcase-local write() with raw out_dir / path — must go through StaticSiteWriter
+Empty
+Empty published list → still generates index.html (with 0 items), rss, sitemap — no crash
+write([]) → creates out_dir, writes nothing, returns empty list
+Domain Ownership
+Blog: BlogSiteGenerator + BlogRenderer — owns posts/, categories/, tags/, rss, sitemap
+Docs: DocsSiteGenerator + DocsRenderer — owns guides/, sections/, versions/, sitemap
+Framework does NOT own blog URLs, docs URLs, taxonomy, deployment, identity/auth
+StaticSiteGeneratorProtocol
+Minimal: def generate(self) -> List[GeneratedPage]: ...
+Does NOT contain def write — writer is separate
+Structural (Protocol), no runtime base class, no isinstance required
+Documented here, implemented in ai_framework/rendering/protocols.py

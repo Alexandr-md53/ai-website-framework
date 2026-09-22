@@ -1,25 +1,16 @@
 from __future__ import annotations
-import pathlib
 from typing import List
-from ..domain.models import Post
+import pathlib
 
-# Framework primitives
-from ai_framework.rendering import (
-    GeneratedPage,
-    SeoContext,
-    SeoInjector,
-    JinjaTemplateRenderer,
-)
+from ..domain.models import Post
+from ai_framework.rendering import SeoContext, SeoInjector, JinjaTemplateRenderer
 
 
 class BlogRenderer:
     """
-    Showcase owner of blog semantics:
-    - Post -> SeoContext mapping
-    - Post -> template context (category_name, author_name, etc.)
-    - posts/<slug>/, categories/<slug>/, tags/<slug>/ URL conventions
-    - RSS, Sitemap, _ensure_post_links
-    Uses framework primitives for generic rendering.
+    Showcase-local renderer for blog_cms — uses framework primitives.
+    Owns blog-specific URL semantics: posts/, categories/, tags/, rss, sitemap
+    Composition only, no inheritance from framework.
     """
 
     def __init__(self, templates_dir: pathlib.Path | None = None):
@@ -34,17 +25,8 @@ class BlogRenderer:
         self.templates_dir = pathlib.Path(templates_dir)
         self.template_renderer = JinjaTemplateRenderer(self.templates_dir)
         self.seo_injector = SeoInjector()
-        # Backward compat for old code that checks _jinja
-        self._jinja = self.template_renderer._available
-        self._env = (
-            self.template_renderer._env
-            if hasattr(self.template_renderer, "_env")
-            else None
-        )
 
-    def _seo_context(self, post_or_dict, title_fallback: str = "Blog") -> dict:
-        # Keep old dict return for backward compat with existing tests that expect dict
-        # But internally use SeoContext.normalize
+    def _seo_context_dict(self, post_or_dict, title_fallback: str = "Blog") -> dict:
         if hasattr(post_or_dict, "to_dict"):
             d = post_or_dict.to_dict()
         elif isinstance(post_or_dict, dict):
@@ -61,9 +43,7 @@ class BlogRenderer:
             "canonical_url": seo.canonical_url,
         }
 
-    def _seo_context_obj(
-        self, post_or_dict, title_fallback: str = "Blog"
-    ) -> SeoContext:
+    def _seo_obj(self, post_or_dict, title_fallback: str = "Blog") -> SeoContext:
         if hasattr(post_or_dict, "to_dict"):
             d = post_or_dict.to_dict()
         elif isinstance(post_or_dict, dict):
@@ -72,7 +52,7 @@ class BlogRenderer:
             d = {}
         return SeoContext.normalize(d, title_fallback=title_fallback)
 
-    def _inject_seo(self, html: str, seo_ctx: dict | SeoContext) -> str:
+    def _inject(self, html: str, seo_ctx: dict | SeoContext) -> str:
         if isinstance(seo_ctx, dict):
             seo = SeoContext(
                 seo_title=seo_ctx.get("seo_title", ""),
@@ -99,8 +79,8 @@ class BlogRenderer:
         return html
 
     def render_post(self, post: Post, category_name: str, author_name: str) -> str:
-        seo_obj = self._seo_context_obj(post, post.title)
-        seo_dict = self._seo_context(post, post.title)
+        seo_obj = self._seo_obj(post, post.title)
+        seo_dict = self._seo_context_dict(post, post.title)
         try:
             cat_slug = category_name.lower().replace(" ", "-") if category_name else ""
             html = self.template_renderer.render(
@@ -113,9 +93,8 @@ class BlogRenderer:
                     **seo_dict,
                 },
             )
-            return self._inject_seo(html, seo_obj)
+            return self._inject(html, seo_obj)
         except Exception:
-            # fallback — guaranteed SEO, behavior-preserving
             return f"""<!doctype html><html><head><title>{seo_obj.seo_title}</title>
 <meta name="description" content="{seo_obj.seo_description}">
 <meta property="og:title" content="{seo_obj.og_title}">
@@ -132,14 +111,6 @@ class BlogRenderer:
             "og_description": "",
             "canonical_url": "/",
         }
-        seo_obj = SeoContext.normalize(
-            {
-                "title": "Blog",
-                "seo_title": "Blog",
-                "seo_description": f"{len(posts)} posts",
-            },
-            title_fallback="Blog",
-        )
         try:
             html = self.template_renderer.render(
                 "index.html", {"posts": posts, **seo_dict}
@@ -205,5 +176,5 @@ class BlogRenderer:
         return f'<?xml version="1.0"?><urlset>{urls}<url><loc>/</loc></url></urlset>'
 
 
-# Backward compat alias: old code imported Renderer from site_generator
+# Compatibility alias for old code
 Renderer = BlogRenderer
