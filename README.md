@@ -55,5 +55,16 @@ The framework's universality is proven by three distinct domain showcases built 
 
 Run the full test suite (Framework + Showcases):
 
+## Product Backlog
+
+- [Backlog Vertical Features](docs/product/backlog-vertical-features.md) â€” next: finish docs_site as Type C full demo
+- Baseline: cd0b9a9 / 663 passed
+- Architecture Stable: phase-12-architecture-stable (90723b3) â€” framework frozen, only proven generic boundaries
+
 ```bash
 python -m pytest
+## Product Backlog
+
+- [Backlog Vertical Features](docs/product/backlog-vertical-features.md) — next: finish docs_site as Type C full demo
+- Baseline: cd0b9a9 / 663 passed
+- Architecture Stable: phase-12-architecture-stable (90723b3) — framework frozen

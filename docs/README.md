@@ -36,3 +36,9 @@ Pipeline: EndpointPipelineAdapter (dto_factory+context_factory+pipeline.execute)
 Stock domain: Plant.stock_quantity:int, Plant.is_available:bool (derived quantity>0)
 Quote: validates OUT_OF_STOCK / INSUFFICIENT_STOCK → 400, decrements stock on success
 - architecture/capability-traceability-16.5.md — Strict traceability v0.2: impl → contract → test → boundary (337 files audit)
+
+## Documentation
+
+- [Architecture Stable Freeze](architecture/architecture-stable-freeze.md) — cd0b9a9 / 663 passed
+- [Product Backlog — Vertical Features](product/backlog-vertical-features.md)
+- [Import Map Frozen V2](IMPORT_MAP_FROZEN_V2.md) — если используешь
