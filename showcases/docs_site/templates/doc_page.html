@@ -1,5 +1,25 @@
-{{ doc.title }}
-{{ section_name }} / {{ version_name }}
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ doc.title }}</title>
+</head>
+<body>
+    <header>
+        <h1>{{ doc.title }}</h1>
+        <p><strong>{{ section_name }}</strong> / {{ version_name }}</p>
+    </header>
 
-{{ doc.content }}
-permalink
+    <main>
+        <article>
+            {{ doc.content }}
+        </article>
+    </main>
+
+    <footer>
+        <p>
+            <a href="/docs/{{ version_name }}/{{ section_name }}/{{ doc.slug }}">Permalink</a>
+        </p>
+    </footer>
+</body>
+</html>

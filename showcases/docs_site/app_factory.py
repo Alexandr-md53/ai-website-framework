@@ -1,206 +1,302 @@
 from __future__ import annotations
-from fastapi import FastAPI, HTTPException
-from typing import Optional, Dict, List
-import uuid, pathlib
 
-from .services.docs_service import DocsService, NotFoundError, ValidationError
+import pathlib
+import uuid
+from typing import Optional, Dict, Any, List
+
+from fastapi import FastAPI, HTTPException
+from fastapi import Query as FastAPIQuery
+from pydantic import BaseModel
+
+from ai_framework.rendering import StaticSiteWriter
+
+from .domain.models import SeoMeta
+from .services.docs_service import DocsService
 from .services.docs_renderer import DocsRenderer
 from .services.docs_site_generator import DocsSiteGenerator
-from .domain.models import SeoMeta
-from ai_framework.rendering import GeneratedPage
 
-FROZEN_ROUTES = {
+
+FROZEN_ROUTES = [
     "POST /sections",
     "GET /sections",
     "POST /versions",
     "GET /versions",
     "POST /docs",
     "GET /docs",
-    "PATCH /docs/{doc_id}/seo",
-    "POST /docs/{doc_id}/publish",
-    "GET /public/docs/{slug}",
-    "GET /public/docs",
+    "PATCH /docs/{id}/seo",
+    "POST /docs/{id}/publish",
+    "POST /docs/{id}/unpublish",
+    "GET /public/pages/{slug}",
     "POST /site/generate",
     "GET /site/pages",
     "GET /site/pages/{path}",
-    "GET /sitemap.xml",
-}
+]
 
 
-def _to_dict(obj):
-    if hasattr(obj, "to_dict"):
-        return obj.to_dict()
-    return obj
-
-
-def _parse_uuid(s: str) -> uuid.UUID:
+def _to_uuid(v: str | uuid.UUID) -> uuid.UUID:
+    if isinstance(v, uuid.UUID):
+        return v
     try:
-        return uuid.UUID(s)
+        return uuid.UUID(str(v))
     except Exception:
-        raise HTTPException(status_code=400, detail=f"Invalid UUID {s}")
+        raise HTTPException(status_code=400, detail=f"invalid uuid {v!r}")
+
+
+def _section_to_dict(section) -> dict[str, Any]:
+    return {
+        "id": str(section.id),
+        "name": section.name,
+        "slug": section.slug,
+        "description": section.description,
+    }
+
+
+def _version_to_dict(version) -> dict[str, Any]:
+    return {
+        "id": str(version.id),
+        "name": version.name,
+        "slug": version.slug,
+    }
+
+
+class SectionCreate(BaseModel):
+    name: str
+    slug: str
+    description: str = ""
+
+
+class VersionCreate(BaseModel):
+    name: str
+    slug: str
+
+
+class DocCreate(BaseModel):
+    title: str
+    slug: str
+    content: str
+    section_id: str
+    version_id: str
+
+
+class SeoPatch(BaseModel):
+    seo_title: Optional[str] = None
+    seo_description: Optional[str] = None
+    canonical_url: Optional[str] = None
+    og_title: Optional[str] = None
+    og_description: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
 
 
 def create_app(
-    service: Optional[DocsService] = None, out_dir: pathlib.Path | None = None
+    service: Optional[DocsService] = None,
+    templates_dir: Optional[pathlib.Path | str] = None,
+    out_dir: pathlib.Path | str = pathlib.Path("dist/docs_site"),
 ) -> FastAPI:
-    svc = service or DocsService()
-    renderer = DocsRenderer()
-    generator = DocsSiteGenerator(svc, renderer)
-    out = out_dir or pathlib.Path("showcases/docs_site/output")
-    state: Dict[str, List[GeneratedPage]] = {"pages": []}
+    if templates_dir is None:
+        templates_dir = pathlib.Path(__file__).parent / "templates"
 
-    app = FastAPI(title="Docs Site — Type B Static/Generated")
+    docs_service = service or DocsService()
+    renderer = DocsRenderer(templates_dir)
+    generator = DocsSiteGenerator(docs_service, renderer)
+    writer = StaticSiteWriter()
+
+    app = FastAPI(title="docs_site showcase")
+    generated_cache: Dict[str, Any] = {"pages": []}
 
     @app.post("/sections")
-    def create_section(payload: dict):
+    def post_section(payload: SectionCreate):
         try:
-            sec = svc.create_section(
-                payload["name"], payload["slug"], payload.get("description", "")
+            sec = docs_service.create_section(
+                name=payload.name, slug=payload.slug, description=payload.description
             )
-            return _to_dict(sec)
-        except ValidationError as e:
-            raise HTTPException(400, str(e))
+        except Exception as e:
+            from .services.docs_service import ValidationError as SValidationError
+
+            if isinstance(e, SValidationError):
+                raise HTTPException(status_code=400, detail=str(e))
+            raise
+        return _section_to_dict(sec)
 
     @app.get("/sections")
-    def list_sections():
-        return [_to_dict(s) for s in svc.list_sections()]
+    def get_sections():
+        secs = docs_service.list_sections()
+        return [_section_to_dict(s) for s in secs]
 
     @app.post("/versions")
-    def create_version(payload: dict):
+    def post_version(payload: VersionCreate):
         try:
-            ver = svc.create_version(payload["name"], payload["slug"])
-            return _to_dict(ver)
-        except ValidationError as e:
-            raise HTTPException(400, str(e))
+            ver = docs_service.create_version(name=payload.name, slug=payload.slug)
+        except Exception as e:
+            from .services.docs_service import ValidationError as SValidationError
+
+            if isinstance(e, SValidationError):
+                raise HTTPException(status_code=400, detail=str(e))
+            raise
+        return _version_to_dict(ver)
 
     @app.get("/versions")
-    def list_versions():
-        return [_to_dict(v) for v in svc.list_versions()]
+    def get_versions():
+        vers = docs_service.list_versions()
+        return [_version_to_dict(v) for v in vers]
 
     @app.post("/docs")
-    def create_doc(payload: dict):
+    def post_doc(payload: DocCreate):
         try:
-            seo = None
-            if any(
-                k in payload
-                for k in [
-                    "seo_title",
-                    "seo_description",
-                    "og_title",
-                    "og_description",
-                    "canonical_url",
-                ]
-            ):
-                seo = SeoMeta(
-                    payload.get("seo_title"),
-                    payload.get("seo_description"),
-                    payload.get("og_title"),
-                    payload.get("og_description"),
-                    payload.get("canonical_url"),
-                )
-            sec_id = (
-                _parse_uuid(payload["section_id"])
-                if payload.get("section_id")
-                else None
+            sec_id = _to_uuid(payload.section_id)
+            ver_id = _to_uuid(payload.version_id)
+            page = docs_service.create_page(
+                title=payload.title,
+                slug=payload.slug,
+                content=payload.content,
+                section_id=sec_id,
+                version_id=ver_id,
             )
-            ver_id = (
-                _parse_uuid(payload["version_id"])
-                if payload.get("version_id")
-                else None
-            )
-            doc = svc.create_page(
-                payload["title"],
-                payload["slug"],
-                payload["content"],
-                sec_id,
-                ver_id,
-                seo,
-            )
-            return _to_dict(doc)
-        except NotFoundError as e:
-            raise HTTPException(404, str(e))
-        except ValidationError as e:
-            raise HTTPException(400, str(e))
+        except Exception as e:
+            from .services.docs_service import ValidationError, NotFoundError
+
+            if isinstance(e, ValidationError):
+                raise HTTPException(status_code=400, detail=str(e))
+            if isinstance(e, NotFoundError):
+                raise HTTPException(status_code=404, detail=str(e))
+            raise
+        return page.to_dict()
 
     @app.get("/docs")
-    def list_docs():
-        return [_to_dict(d) for d in svc.list_pages()]
+    def get_docs():
+        pages = docs_service.list_pages()
+        return [p.to_dict() for p in pages]
 
-    @app.patch("/docs/{doc_id}/seo")
-    def update_seo(doc_id: str, payload: dict):
+    @app.patch("/docs/{id}/seo")
+    def patch_docs_seo(id: str, payload: SeoPatch):
+        pid = _to_uuid(id)
+        seo = SeoMeta(
+            seo_title=payload.seo_title or payload.title or "",
+            seo_description=payload.seo_description or payload.description or "",
+            canonical_url=payload.canonical_url or "",
+            og_title=payload.og_title or payload.seo_title or payload.title or "",
+            og_description=payload.og_description
+            or payload.seo_description
+            or payload.description
+            or "",
+        )
         try:
-            seo = SeoMeta(
-                payload.get("seo_title"),
-                payload.get("seo_description"),
-                payload.get("og_title"),
-                payload.get("og_description"),
-                payload.get("canonical_url"),
-            )
-            doc = svc.update_page_seo(_parse_uuid(doc_id), seo)
-            return _to_dict(doc)
-        except NotFoundError as e:
-            raise HTTPException(404, str(e))
+            page = docs_service.update_page_seo(pid, seo)
+        except Exception as e:
+            from .services.docs_service import NotFoundError
 
-    @app.post("/docs/{doc_id}/publish")
-    def publish(doc_id: str):
+            if isinstance(e, NotFoundError):
+                raise HTTPException(status_code=404, detail=str(e))
+            raise
+        return page.to_dict()
+
+    @app.post("/docs/{id}/publish")
+    def publish_docs(id: str):
+        pid = _to_uuid(id)
         try:
-            doc = svc.publish_page(_parse_uuid(doc_id))
-            return _to_dict(doc)
-        except NotFoundError as e:
-            raise HTTPException(404, str(e))
+            docs_service.publish(pid)
+        except Exception as e:
+            from .services.docs_service import ValidationError, NotFoundError
 
-    @app.get("/public/docs/{slug}")
-    def get_public(slug: str):
+            if isinstance(e, NotFoundError):
+                raise HTTPException(status_code=404, detail=str(e))
+            if isinstance(e, ValidationError):
+                raise HTTPException(status_code=400, detail=str(e))
+            raise
+        return {"id": id, "published": True}
+
+    @app.post("/docs/{id}/unpublish")
+    def unpublish_docs(id: str):
+        pid = _to_uuid(id)
         try:
-            return _to_dict(svc.get_published_by_slug(slug))
-        except NotFoundError as e:
-            raise HTTPException(404, str(e))
+            docs_service.unpublish(pid)
+        except Exception as e:
+            from .services.docs_service import NotFoundError
 
-    @app.get("/public/docs")
-    def list_public(section: Optional[str] = None, version: Optional[str] = None):
-        return [_to_dict(p) for p in svc.list_published(section, version)]
+            if isinstance(e, NotFoundError):
+                raise HTTPException(status_code=404, detail=str(e))
+            raise
+        return {"id": id, "published": False}
+
+    @app.post("/pages")
+    def post_page_alias(payload: DocCreate):
+        return post_doc(payload)
+
+    @app.patch("/pages/{page_id}/seo")
+    def patch_page_alias(page_id: str, payload: SeoPatch):
+        return patch_docs_seo(page_id, payload)
+
+    @app.post("/pages/{page_id}/publish")
+    def publish_page_alias(page_id: str):
+        return publish_docs(page_id)
+
+    @app.post("/pages/{page_id}/unpublish")
+    def unpublish_page_alias(page_id: str):
+        return unpublish_docs(page_id)
+
+    @app.get("/public/pages/{slug}")
+    def get_public_page(slug: str, version: Optional[str] = FastAPIQuery(default=None)):
+        try:
+            page = docs_service.get_published_by_slug(slug, version)
+            return {"page": page.to_dict(), "html": ""}
+        except Exception as e:
+            from .services.docs_service import NotFoundError
+
+            if isinstance(e, NotFoundError):
+                raise HTTPException(status_code=404, detail=str(e))
+            raise
 
     @app.post("/site/generate")
-    def generate_site():
+    def site_generate():
         pages = generator.generate()
-        generator.write(pages, out)
-        state["pages"] = pages
+        try:
+            written = writer.write(pages, out_dir, clean=True)
+            written_str = [str(p) for p in written]
+        except Exception:
+            written_str = []
+        generated_cache["pages"] = pages
         return {
             "generated": len(pages),
-            "out_dir": str(out),
-            "pages": [p.path for p in pages],
+            "written": written_str,
+            "paths": [p.path for p in pages],
         }
 
     @app.get("/site/pages")
-    def list_pages():
-        return [{"path": p.path, "kind": p.kind} for p in state["pages"]]
-
-    @app.get("/site/pages/{path:path}")
-    def get_page(path: str):
-        for p in state["pages"]:
-            if p.path == path:
-                return {"path": p.path, "html": p.html}
-        raise HTTPException(404, f"page {path} not generated")
-
-    @app.get("/sitemap.xml")
-    def sitemap():
-        pages = state["pages"]
+    def site_pages():
+        pages = generated_cache.get("pages")
         if not pages:
             pages = generator.generate()
-        for p in pages:
-            if p.kind == "sitemap":
-                return p.html
-        return generator.renderer.render_sitemap(svc.list_published())
+            generated_cache["pages"] = pages
+        return [{"path": p.path, "kind": p.kind} for p in pages]
 
-    app.state.frozen_routes = FROZEN_ROUTES
-    app.state.service = svc
-    app.state.generator = generator
+    @app.get("/site/pages/{path:path}")
+    def site_page_by_path(path: str):
+        pages = generated_cache.get("pages")
+        if not pages:
+            pages = generator.generate()
+            generated_cache["pages"] = pages
+        target = next((p for p in pages if p.path == path), None)
+        if not target:
+            target = next((p for p in pages if p.path == f"{path}/index.html"), None)
+        if not target:
+            target = next(
+                (p for p in pages if p.path.lstrip("/") == path.lstrip("/")), None
+            )
+        if not target:
+            raise HTTPException(status_code=404, detail="generated page not found")
+        return {
+            "path": target.path,
+            "kind": getattr(target, "kind", "page"),
+            "html": getattr(target, "html", ""),
+        }
+
     return app
 
 
-def create_test_app() -> FastAPI:
-    svc = DocsService()
-    import tempfile
+def create_test_app(*args, **kwargs) -> FastAPI:
+    return create_app(*args, **kwargs)
 
-    tmp = pathlib.Path(tempfile.gettempdir()) / "docs_site_test_out"
-    return create_app(service=svc, out_dir=tmp)
+
+app = create_app()
+
+__all__ = ["create_app", "create_test_app", "app", "FROZEN_ROUTES"]
