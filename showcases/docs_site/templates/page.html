@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ doc.title }}</title>
+</head>
+<body>
+    <header>
+        <h1>{{ doc.title }}</h1>
+        <p><strong>{{ section_name }}</strong> / {{ version_name }}</p>
+    </header>
+
+    <main>
+        <article>
+            {{ doc.content }}
+        </article>
+    </main>
+
+    <footer>
+        <p>
+            <a href="{{ page_url }}">Permalink</a>
+        </p>
+    </footer>
+</body>
+</html>

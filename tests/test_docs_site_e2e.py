@@ -41,15 +41,21 @@ def test_docs_generation_pipeline_G1_G2():
     pages = client.get("/site/pages").json()
     paths = [p["path"] for p in pages]
     assert "index.html" in paths
-    assert "guides/getting-started/index.html" in paths
+    assert "v/v2/index.html" in paths
+    assert "v/v2/guides/index.html" in paths
+    assert "v/v2/guides/getting-started/index.html" in paths
     assert "sitemap.xml" in paths
+
     # URL conventions must be docs-specific, not blog
     assert not any("posts/" in p for p in paths), (
         "docs_site must not use posts/ convention"
     )
     assert not any("categories/" in p for p in paths)
-    assert any("sections/" in p for p in paths)
-    assert any("versions/" in p for p in paths)
+
+    # Step 5 uses versioned /v/{version}/ hierarchy.
+    assert not any(p.startswith("sections/") for p in paths)
+    assert not any(p.startswith("versions/") for p in paths)
+
     # SEO persists
     seo_upd = client.patch(
         f"/docs/{doc['id']}/seo",
@@ -61,7 +67,9 @@ def test_docs_generation_pipeline_G1_G2():
     )
     assert seo_upd.status_code == 200
     client.post("/site/generate")
-    page = client.get("/site/pages/guides/getting-started/index.html").json()
+    page = client.get(
+    "/site/pages/v/v2/guides/getting-started/index.html"
+    ).json()
     assert "Docs SEO Title" in page["html"]
 
 
