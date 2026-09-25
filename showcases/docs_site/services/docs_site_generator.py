@@ -60,7 +60,6 @@ class DocsSiteGenerator:
         published = self.service.list_published()
 
         sections = {section.id: section for section in self.service.list_sections()}
-
         versions = {version.id: version for version in self.service.list_versions()}
 
         page_urls = {
@@ -174,6 +173,16 @@ class DocsSiteGenerator:
             )
         )
 
+        # Deterministic output + duplicate guard
+        sitemap_page = next((p for p in pages if p.path == "sitemap.xml"), None)
+        other_pages = [p for p in pages if p.path != "sitemap.xml"]
+        seen = set()
+        for p in other_pages:
+            if p.path in seen:
+                raise ValueError(f"duplicate generated path {p.path!r}")
+            seen.add(p.path)
+        other_pages.sort(key=lambda p: p.path)
+        pages = other_pages + ([sitemap_page] if sitemap_page else [])
         return pages
 
     def write(

@@ -92,25 +92,32 @@ class DocsRenderer:
 
         try:
             html = self.template_renderer.render(
-                "doc_page.html",
+                "page.html",
                 context,
             )
             return self._inject(html, seo)
         except Exception:
-            return (
-                "<!doctype html>"
-                "<html>"
-                "<head>"
-                '<meta charset="utf-8">'
-                f"<title>{seo.seo_title}</title>"
-                "</head>"
-                "<body>"
-                f"<header><h1>{doc.title}</h1></header>"
-                f"<main><article>{doc.content}</article></main>"
-                f'<footer><a href="{page_url}">Permalink</a></footer>'
-                "</body>"
-                "</html>"
-            )
+            try:
+                html = self.template_renderer.render(
+                    "doc_page.html",
+                    context,
+                )
+                return self._inject(html, seo)
+            except Exception:
+                return (
+                    "<!doctype html>"
+                    "<html>"
+                    "<head>"
+                    '<meta charset="utf-8">'
+                    f"<title>{seo.seo_title}</title>"
+                    "</head>"
+                    "<body>"
+                    f"<header><h1>{doc.title}</h1></header>"
+                    f"<main><article>{doc.content}</article></main>"
+                    f'<footer><a href="{page_url}">Permalink</a></footer>'
+                    "</body>"
+                    "</html>"
+                )
 
     def render_index(
         self,
@@ -253,8 +260,18 @@ class DocsRenderer:
             )
 
     def render_sitemap(self, paths: List[str]) -> str:
-        urls = "\n".join(f"    <url><loc>{path}</loc></url>" for path in paths)
-
+        # Try to use template if available, fallback to manual
+        try:
+            html = self.template_renderer.render(
+                "sitemap.xml",
+                {"paths": paths, "sitemap_paths": paths},
+            )
+            # if template rendered empty urls, fallback to manual
+            if "<url>" in html or "<loc>" in html:
+                return html
+        except Exception:
+            pass
+        urls = "\n".join(f" <url><loc>{path}</loc></url>" for path in paths)
         return (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

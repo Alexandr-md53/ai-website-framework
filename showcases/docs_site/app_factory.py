@@ -15,7 +15,6 @@ from .services.docs_service import DocsService
 from .services.docs_renderer import DocsRenderer
 from .services.docs_site_generator import DocsSiteGenerator
 
-
 FROZEN_ROUTES = [
     "POST /sections",
     "GET /sections",
@@ -23,9 +22,14 @@ FROZEN_ROUTES = [
     "GET /versions",
     "POST /docs",
     "GET /docs",
+    "POST /pages",
+    "GET /pages",
     "PATCH /docs/{id}/seo",
+    "PATCH /pages/{id}/seo",
     "POST /docs/{id}/publish",
     "POST /docs/{id}/unpublish",
+    "POST /pages/{id}/publish",
+    "POST /pages/{id}/unpublish",
     "GET /public/pages/{slug}",
     "POST /site/generate",
     "GET /site/pages",
@@ -167,6 +171,14 @@ def create_app(
         pages = docs_service.list_pages()
         return [p.to_dict() for p in pages]
 
+    @app.get("/pages")
+    def get_pages_alias():
+        return get_docs()
+
+    @app.post("/pages")
+    def post_page_alias(payload: DocCreate):
+        return post_doc(payload)
+
     @app.patch("/docs/{id}/seo")
     def patch_docs_seo(id: str, payload: SeoPatch):
         pid = _to_uuid(id)
@@ -189,6 +201,10 @@ def create_app(
                 raise HTTPException(status_code=404, detail=str(e))
             raise
         return page.to_dict()
+
+    @app.patch("/pages/{id}/seo")
+    def patch_page_alias_id(id: str, payload: SeoPatch):
+        return patch_docs_seo(id, payload)
 
     @app.post("/docs/{id}/publish")
     def publish_docs(id: str):
@@ -218,10 +234,15 @@ def create_app(
             raise
         return {"id": id, "published": False}
 
-    @app.post("/pages")
-    def post_page_alias(payload: DocCreate):
-        return post_doc(payload)
+    @app.post("/pages/{id}/publish")
+    def publish_page_alias_id(id: str):
+        return publish_docs(id)
 
+    @app.post("/pages/{id}/unpublish")
+    def unpublish_page_alias_id(id: str):
+        return unpublish_docs(id)
+
+    # Backward compat with {page_id} form
     @app.patch("/pages/{page_id}/seo")
     def patch_page_alias(page_id: str, payload: SeoPatch):
         return patch_docs_seo(page_id, payload)

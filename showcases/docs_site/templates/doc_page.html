@@ -9,17 +9,11 @@
         <h1>{{ doc.title }}</h1>
         <p><strong>{{ section_name }}</strong> / {{ version_name }}</p>
     </header>
-
     <main>
-        <article>
-            {{ doc.content }}
-        </article>
+        <article>{{ doc.content }}</article>
     </main>
-
     <footer>
-        <p>
-            <a href="/docs/{{ version_name }}/{{ section_name }}/{{ doc.slug }}">Permalink</a>
-        </p>
+        <p><a href="{{ page_url }}">Permalink</a></p>
     </footer>
 </body>
 </html>
