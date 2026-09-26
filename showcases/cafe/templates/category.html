@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{ category.name }}</title>
+</head>
+<body>
+  <h1>{{ category.name }}</h1>
+  <p>{{ category.slug }}</p>
+  <ul>
+    {% for item in items %}
+      <li>
+        <a href="/menu/{{ category.slug }}/{{ item.slug }}/">
+          {{ item.title }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

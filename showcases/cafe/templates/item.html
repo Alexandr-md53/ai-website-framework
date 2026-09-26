@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{ item.title }}</title>
+</head>
+<body>
+  <h1>{{ item.title }}</h1>
+  <p>{{ item.slug }}</p>
+  <p>{{ item.description }}</p>
+  <ul>
+    <li>Price: {{ price }}</li>
+    <li>Available: {% if is_available %}Yes{% else %}No{% endif %}</li>
+    <li>Category: {{ category_slug }}</li>
+  </ul>
+  <p>
+    <a href="/menu/{{ category_slug }}/">
+      Back to {{ category_slug }}
+    </a>
+  </p>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Menu</title>
+</head>
+<body>
+  <h1>Menu</h1>
+  <p>Categories</p>
+  <ul>
+    {% for cat in categories %}
+      <li>
+        <a href="/menu/{{ cat.slug }}/">
+          {{ cat.name }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
