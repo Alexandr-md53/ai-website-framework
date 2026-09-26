@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Events — Home</title>
+</head>
+<body>
+  <header>
+    <h1>Events — Home</h1>
+    <p><strong>Community</strong> / Home</p>
+  </header>
+  <main>
+    <article>Community events home</article>
+    <section>
+      <ul>
+        {% for venue in venues %}
+          <li>
+            <a href="/events/{{ venue.slug }}/">
+              {{ venue.name }}
+            </a>
+          </li>
+        {% endfor %}
+        {% for event in events %}
+          <li>
+            <a href="/events/{{ event.slug }}/">
+              {{ event.title }}
+            </a>
+            — {{ event.start_time }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </main>
+  <footer>
+    <p><a href="{{ page_url }}">Permalink</a></p>
+  </footer>
+</body>
+</html>

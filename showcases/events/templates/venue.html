@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ venue.name }}</title>
+</head>
+<body>
+  <header>
+    <h1>{{ venue.name }}</h1>
+    <p><strong>{{ venue.slug }}</strong> / {{ venue.address }}</p>
+  </header>
+  <main>
+    <article>{{ venue.address }}</article>
+    <section>
+      <ul>
+        <li>Capacity: {{ venue.capacity }}</li>
+        <li>Slug: {{ venue.slug }}</li>
+        {% for event in events %}
+          <li>
+            <a href="/events/{{ venue.slug }}/{{ event.slug }}/">
+              {{ event.title }}
+            </a>
+            — {{ event.start_time }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </main>
+  <footer>
+    <p><a href="{{ page_url }}">Permalink</a></p>
+  </footer>
+</body>
+</html>

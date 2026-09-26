@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ event.title }}</title>
+</head>
+<body>
+  <header>
+    <h1>{{ event.title }}</h1>
+    <p><strong>{{ venue_slug }}</strong> / {{ event.slug }}</p>
+  </header>
+  <main>
+    <article>{{ event.description }}</article>
+    <section>
+      <ul>
+        <li>Start: {{ start_time }}</li>
+        <li>End: {{ end_time }}</li>
+        <li>Capacity: {{ event.capacity }}</li>
+        <li>RSVP Confirmed: {{ rsvp_count }}</li>
+        <li>Venue: {{ venue_slug }}</li>
+      </ul>
+    </section>
+  </main>
+  <footer>
+    <p><a href="{{ page_url }}">Permalink</a></p>
+  </footer>
+</body>
+</html>
