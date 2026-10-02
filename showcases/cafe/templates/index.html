@@ -1,18 +1,11 @@
 <!DOCTYPE html>
-<html>
-<head>
-<title>Cafe — Home</title>
-</head>
+<html lang="{{ lang|default('ru') }}">
+<head><title>Cafe — Home {{ lang|default('ru') }}</title></head>
 <body>
-  <h1>Cafe — Home</h1>
-  <p>Welcome to cafe</p>
+  <h1>{{ ui.menu.title|default('Cafe — Home') if ui is defined else 'Cafe — Home' }}</h1>
   <ul>
-    {% for cat in categories %}
-      <li>
-        <a href="/menu/{{ cat.slug }}/">
-          {{ cat.name }}
-        </a>
-      </li>
+    {% for lc in localized_categories %}
+      <li><a href="/menu/{{ lc.category.slug }}/">{{ lc.localized_name }}</a></li>
     {% endfor %}
   </ul>
 </body>

@@ -1,21 +1,15 @@
 <!DOCTYPE html>
-<html>
-<head>
-<title>{{ item.title }}</title>
-</head>
+<html lang="{{ lang|default('ru') }}">
+<head><title>{{ localized_title|default(item.title) }}</title></head>
 <body>
-  <h1>{{ item.title }}</h1>
-  <p>{{ item.slug }}</p>
-  <p>{{ item.description }}</p>
+  <h1>{{ localized_title|default(item.title) }}</h1>
+  <p>{{ localized_description|default(item.description) }}</p>
+  {% if image_url %}<img src="{{ image_url }}" alt="{{ localized_title }}" width="1000" height="700">{% endif %}
   <ul>
-    <li>Price: {{ price }}</li>
+    <li>{{ ui.dish.price|default('Price:') if ui is defined else 'Price:' }} {{ price }}</li>
     <li>Available: {% if is_available %}Yes{% else %}No{% endif %}</li>
     <li>Category: {{ category_slug }}</li>
   </ul>
-  <p>
-    <a href="/menu/{{ category_slug }}/">
-      Back to {{ category_slug }}
-    </a>
-  </p>
+  <p><a href="/menu/{{ category_slug }}/">{{ ui.dish.back_to_category|default('Back') if ui is defined else 'Back' }}</a></p>
 </body>
 </html>

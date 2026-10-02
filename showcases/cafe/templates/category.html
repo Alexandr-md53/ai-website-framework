@@ -1,18 +1,12 @@
 <!DOCTYPE html>
-<html>
-<head>
-<title>{{ category.name }}</title>
-</head>
+<html lang="{{ lang|default('ru') }}">
+<head><title>{{ localized_name|default(category.name) }}</title></head>
 <body>
-  <h1>{{ category.name }}</h1>
+  <h1>{{ localized_name|default(category.name) }}</h1>
   <p>{{ category.slug }}</p>
   <ul>
-    {% for item in items %}
-      <li>
-        <a href="/menu/{{ category.slug }}/{{ item.slug }}/">
-          {{ item.title }}
-        </a>
-      </li>
+    {% for iw in items_with_images %}
+      <li><a href="/menu/{{ category.slug }}/{{ iw.item.slug }}/">{{ iw.localized_title }}</a>{% if iw.image_url %}<img src="{{ iw.image_url }}" alt="{{ iw.localized_title }}">{% endif %}</li>
     {% endfor %}
   </ul>
 </body>
