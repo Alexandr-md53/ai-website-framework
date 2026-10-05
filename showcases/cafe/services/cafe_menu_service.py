@@ -11,7 +11,8 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 from typing import Dict, List, Optional
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 from showcases.cafe.domain.models_v01 import (
     MenuCategory,
@@ -75,6 +76,22 @@ class CafeMenuService:
 
     # ---- MenuItem ----
 
+    def create_category(
+        self, name: str, slug: str, name_ru: str | None = None, name_ro: str | None = None, name_en: str | None = None, description_ru: str | None = None, description_ro: str | None = None, description_en: str | None = None
+    ) -> MenuCategory:
+        validate_slug(slug)
+        if slug in self._cat_slug_index:
+            raise DuplicateSlugError(f"Category slug duplicate: {slug}")
+        cat_id = uuid.uuid4()
+        cat = MenuCategory(
+            id=cat_id, name=name, slug=slug, is_published=True,
+            name_ru=name_ru or name, name_ro=name_ro or name, name_en=name_en or name,
+            description_ru=description_ru, description_ro=description_ro, description_en=description_en,
+        )
+        self._categories[cat_id] = cat
+        self._cat_slug_index[slug] = cat_id
+        return cat
+
     def create_item(
         self,
         title: str,
@@ -84,6 +101,12 @@ class CafeMenuService:
         category_id: uuid.UUID,
         stock_quantity: Optional[int] = None,
         dietary_tags: Optional[List[str]] = None,
+        title_ru: str | None = None,
+        title_ro: str | None = None,
+        title_en: str | None = None,
+        description_ru: str | None = None,
+        description_ro: str | None = None,
+        description_en: str | None = None,
     ) -> MenuItem:
         validate_slug(slug)
         if slug in self._slug_index:
@@ -104,10 +127,17 @@ class CafeMenuService:
             price=price,
             category_id=category_id,
             stock_quantity=stock_quantity,
+            image_filename=None,
             is_published=False,
             seo=None,
             dietary_tags=dietary_tags or [],
             status=MenuItemStatus.DRAFT,
+            title_ru=title_ru if title_ru is not None else title,
+            title_ro=title_ro if title_ro is not None else title,
+            title_en=title_en if title_en is not None else title,
+            description_ru=description_ru if description_ru is not None else description,
+            description_ro=description_ro if description_ro is not None else description,
+            description_en=description_en if description_en is not None else description,
         )
         self._items[item_id] = item
         self._slug_index[slug] = item_id
@@ -122,11 +152,7 @@ class CafeMenuService:
         return list(self._items.values())
 
     def list_published(self, category_slug: Optional[str] = None) -> List[MenuItem]:
-        items = [
-            i
-            for i in self._items.values()
-            if i.is_published and i.status == MenuItemStatus.PUBLISHED
-        ]
+        items = [i for i in self._items.values() if i.is_published and i.status == MenuItemStatus.PUBLISHED]
         if category_slug:
             cat_id = self._cat_slug_index.get(category_slug)
             if not cat_id:
@@ -143,15 +169,7 @@ class CafeMenuService:
             raise NotFoundError(f"Item {slug} not published")
         return item
 
-    def update_item(
-        self,
-        item_id: uuid.UUID,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
-        price: Optional[Decimal] = None,
-        stock_quantity: Optional[int] = None,
-        category_id: Optional[uuid.UUID] = None,
-    ) -> MenuItem:
+    def update_item(self, item_id: uuid.UUID, title: Optional[str] = None, description: Optional[str] = None, price: Optional[Decimal] = None, stock_quantity: Optional[int] = None, category_id: Optional[uuid.UUID] = None) -> MenuItem:
         item = self.get_item(item_id)
         if title is not None:
             if len(title.strip()) < 2:
@@ -173,19 +191,9 @@ class CafeMenuService:
             item.category_id = category_id
         return item
 
-    def update_seo(
-        self,
-        item_id: uuid.UUID,
-        seo_title: Optional[str],
-        seo_description: Optional[str],
-        canonical_url: Optional[str],
-    ) -> MenuItem:
+    def update_seo(self, item_id: uuid.UUID, seo_title: Optional[str], seo_description: Optional[str], canonical_url: Optional[str]) -> MenuItem:
         item = self.get_item(item_id)
-        item.seo = SeoMeta(
-            seo_title=seo_title,
-            seo_description=seo_description,
-            canonical_url=canonical_url,
-        )
+        item.seo = SeoMeta(seo_title=seo_title, seo_description=seo_description, canonical_url=canonical_url)
         return item
 
     def publish(self, item_id: uuid.UUID) -> MenuItem:
@@ -204,14 +212,26 @@ class CafeMenuService:
         item.status = MenuItemStatus.DRAFT
         return item
 
-    def set_availability(
-        self, item_id: uuid.UUID, stock_quantity: Optional[int]
-    ) -> MenuItem:
+    def set_availability(self, item_id: uuid.UUID, stock_quantity: Optional[int]) -> MenuItem:
         item = self.get_item(item_id)
         if stock_quantity is not None and stock_quantity < 0:
             raise ValidationError("stock >=0")
         item.stock_quantity = stock_quantity
         return item
+
+    # ---- Media v0.2 ----
+    def set_image(self, item_id: uuid.UUID, image_filename: Optional[str]) -> MenuItem:
+        """Set dish image filename (after successful upload via CafeImageService)"""
+        item = self.get_item(item_id)
+        item.image_filename = image_filename
+        return item
+
+    def delete_image_ref(self, item_id: uuid.UUID) -> MenuItem:
+        """Clear image reference (after FS delete)"""
+        item = self.get_item(item_id)
+        item.image_filename = None
+        return item
+
 
     # ---- Order ----
 
@@ -241,9 +261,7 @@ class CafeMenuService:
                 if item.stock_quantity == 0:
                     raise OutOfStockError(f"Item {item.slug} OUT_OF_STOCK")
                 if qty > item.stock_quantity:
-                    raise InsufficientStockError(
-                        f"Item {item.slug} INSUFFICIENT_STOCK: requested {qty} > stock {item.stock_quantity}"
-                    )
+                    raise InsufficientStockError(f"Item {item.slug} INSUFFICIENT_STOCK: requested {qty} > stock {item.stock_quantity}")
 
             line = OrderLine(menu_item_id=mid, quantity=qty, price_snapshot=item.price)
             order_lines.append(line)
@@ -271,9 +289,7 @@ class CafeMenuService:
     def validate_order(self, order_id: uuid.UUID) -> Order:
         order = self.get_order(order_id)
         if order.status != OrderStatus.DRAFT:
-            raise ValidationError(
-                f"Only DRAFT can be validated, current {order.status}"
-            )
+            raise ValidationError(f"Only DRAFT can be validated, current {order.status}")
         # re-check stock
         for line in order.lines:
             item = self.get_item(line.menu_item_id)
@@ -288,9 +304,7 @@ class CafeMenuService:
     def confirm_order(self, order_id: uuid.UUID) -> Order:
         order = self.get_order(order_id)
         if order.status not in (OrderStatus.DRAFT, OrderStatus.VALIDATED):
-            raise ValidationError(
-                f"Only DRAFT/VALIDATED can be confirmed, current {order.status}"
-            )
+            raise ValidationError(f"Only DRAFT/VALIDATED can be confirmed, current {order.status}")
         # final stock check and decrement
         for line in order.lines:
             item = self.get_item(line.menu_item_id)
