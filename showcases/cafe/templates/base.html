@@ -1,5 +1,38 @@
 <!doctype html>
 <html lang="{{ lang }}">
-<head><meta charset="utf-8"><title>{{ title }}</title><meta name="description" content="{{ description }}"></head>
-<body>{% block content %}{% endblock %}</body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<meta name="description" content="{{ description }}">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ description }}">
+<style>
+  body{font-family:system-ui,sans-serif;max-width:900px;margin:0 auto;padding:16px;line-height:1.6}
+  header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding-bottom:12px;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+  nav a{margin-right:12px;text-decoration:none;color:#333}
+  nav a.active{font-weight:bold;border-bottom:2px solid #333}
+  .lang a{margin-left:8px;text-decoration:none}
+  footer{margin-top:32px;border-top:1px solid #ddd;padding-top:12px;color:#666;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <div><strong>{{ cafe_name }}</strong> — {{ city }}</div>
+  <nav>
+    <a href="{{ nav.home }}" class="{{ 'active' if page=='index' else '' }}">{{ ui.home }}</a>
+    <a href="{{ nav.menu }}" class="{{ 'active' if page=='menu' else '' }}">{{ ui.menu }}</a>
+    <a href="{{ nav.about }}" class="{{ 'active' if page=='about' else '' }}">{{ ui.about }}</a>
+    <span class="lang"> | <a href="{{ lang_switch.ru }}">RU</a> <a href="{{ lang_switch.en }}">EN</a></span>
+  </nav>
+</header>
+
+<main>
+{{ body | safe }}
+</main>
+
+<footer>
+  {{ cafe_name }} — 150 MDL — {{ description }} — bakery in {{ city }}
+</footer>
+</body>
 </html>
