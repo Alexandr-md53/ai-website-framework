@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
@@ -7,32 +7,19 @@
 <meta name="description" content="{{ description }}">
 <meta property="og:title" content="{{ title }}">
 <meta property="og:description" content="{{ description }}">
-<style>
-  body{font-family:system-ui,sans-serif;max-width:900px;margin:0 auto;padding:16px;line-height:1.6}
-  header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding-bottom:12px;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-  nav a{margin-right:12px;text-decoration:none;color:#333}
-  nav a.active{font-weight:bold;border-bottom:2px solid #333}
-  .lang a{margin-left:8px;text-decoration:none}
-  footer{margin-top:32px;border-top:1px solid #ddd;padding-top:12px;color:#666;font-size:14px}
-</style>
+<meta property="og:image" content="/assets/logo/logo.png">
+<meta property="og:type" content="website">
+{{ canonical_url }}
+{{ hreflang_tags }}
+<link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
-<header>
-  <div><strong>{{ cafe_name }}</strong> — {{ city }}</div>
-  <nav>
-    <a href="{{ nav.home }}" class="{{ 'active' if page=='index' else '' }}">{{ ui.home }}</a>
-    <a href="{{ nav.menu }}" class="{{ 'active' if page=='menu' else '' }}">{{ ui.menu }}</a>
-    <a href="{{ nav.about }}" class="{{ 'active' if page=='about' else '' }}">{{ ui.about }}</a>
-    <span class="lang"> | <a href="{{ lang_switch.ru }}">RU</a> <a href="{{ lang_switch.en }}">EN</a></span>
-  </nav>
+<header class="site-header">
+  <a href="{{ home_url }}" class="logo-link"><img src="/assets/logo/logo.png" alt="{{ cafe_name }} logo" width="120" height="60"></a>
+  <nav><a href="{{ home_url }}">{{ nav.home }}</a> <a href="{{ menu_url }}">{{ nav.menu }}</a> <a href="{{ about_url }}">{{ nav.about }}</a></nav>
+  <div class="lang-switch"><a href="{{ lang_switch.ru }}">RU</a> | <a href="{{ lang_switch.ro }}">RO</a> | <a href="{{ lang_switch.en }}">EN</a></div>
 </header>
-
-<main>
-{{ body | safe }}
-</main>
-
-<footer>
-  {{ cafe_name }} — 150 MDL — {{ description }} — bakery in {{ city }}
-</footer>
+<main>{{ body | safe }}</main>
+<footer class="site-footer"><div class="footer-inner"><div class="footer-brand">{{ cafe_name }} — {{ cafe_city }}</div><div class="footer-contacts"><div class="footer-address">{{ contact.address }}</div><div class="footer-hours">{{ contact.hours }}</div><div class="footer-phone"><a href="tel:{{ contact.phone }}">{{ contact.phone }}</a></div><div class="footer-map"><a href="{{ contact.map_url }}" target="_blank">{{ contact.map_label }}</a></div></div></div></footer>
 </body>
 </html>

@@ -1,75 +1,134 @@
-"""
-Cafe v0.5 Product Slice - Business Domain
-Consumer #1 : Café
-Framework: NO dependency on business data, only engine
-
-This file is ALLOWED to contain business domain:
-- 150 MDL
-- bakery
-- menu prices
-- about / SEO
-"""
-from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import Optional, List, Dict
+from collections import defaultdict
 
-CAFE_IDENTITY = {
-    "name": "Café Aurora",
-    "tagline": {"ru": "Пекарня и кофе в Комрате", "en": "Bakery & Coffee in Comrat"},
-    "city": "Comrat",
-    "currency": "MDL",
-}
 
-ABOUT = {
-    "ru": "Café Aurora — семейная пекарня в Комрате. Свежий хлеб, круассаны и кофе каждый день.",
-    "en": "Café Aurora is a family bakery in Comrat. Fresh bread, croissants and coffee every day."
-}
-
-SEO_DEFAULT = {
-    "title_ru": "Кафе Аврора Комрат — пекарня, меню, цены",
-    "title_en": "Cafe Aurora Comrat - bakery, menu, prices",
-    "description_ru": "Меню пекарни в Комрате, цены от 15 MDL, свежая выпечка, хлеб, кофе. Café Aurora.",
-    "description_en": "Bakery menu in Comrat, prices from 15 MDL, fresh bakery, bread, coffee. Cafe Aurora.",
-    "keywords": ["bakery", "cafe", "Comrat", "Komrat", "bread", "croissant", "MDL"]
-}
-
-@dataclass(frozen=True)
+@dataclass
 class MenuItem:
-    id: str
+    slug: str
     name_ru: str
     name_en: str
     price_mdl: int
     category: str
     description_ru: str
     description_en: str
+    image: Optional[str] = None
+
+
+CAFE_IDENTITY = {
+    "name": "Café Aurora",
+    "city_ru": "Кишинев",
+    "city_en": "Chisinau",
+    "tagline_ru": "Кофе и свежая выпечка",
+    "tagline_en": "Coffee and fresh bakery",
+    "about_ru": "Уютное кафе в центре Кишинева. Семейная пекарня. Готовим на месте каждый день.",
+    "about_en": "Cozy cafe in the center of Chisinau. Family bakery. Freshly baked every day.",
+}
+
+# v0.8 — REAL CONTACTS from project owner
+CAFE_CONTACT = {
+    "address_ru": "ул. Штефан Чел Маре 64, Кишинев, Молдова",
+    "address_en": "64 Stefan cel Mare St., Chisinau, Moldova",
+    "phone": "+373 79 68 73 82",
+    "hours_ru": "08:00–22:00, пн–вс",
+    "hours_en": "08:00–22:00, Mon–Sun",
+    "map_url": "https://www.google.com/maps/search/?api=1&query=Stefan+cel+Mare+64+Chisinau+Moldova",
+}
 
 MENU: List[MenuItem] = [
-    MenuItem("bread_white", "Белый хлеб", "White bread", 25, "bakery", "Свежий белый хлеб", "Fresh white bread"),
-    MenuItem("bread_rye", "Ржаной хлеб", "Rye bread", 28, "bakery", "Ржаной на закваске", "Sourdough rye"),
-    MenuItem("croissant", "Круассан", "Croissant", 35, "bakery", "Слоистый круассан", "Buttery croissant"),
-    MenuItem("croissant_choco", "Круассан с шоколадом", "Chocolate croissant", 40, "bakery", "С бельгийским шоколадом", "With Belgian chocolate"),
-    MenuItem("baguette", "Багет", "Baguette", 22, "bakery", "Хрустящий багет", "Crunchy baguette"),
-    MenuItem("cinnamon_roll", "Булочка с корицей", "Cinnamon roll", 38, "bakery", "С корицей и глазурью", "With cinnamon glaze"),
-    MenuItem("espresso", "Эспрессо", "Espresso", 20, "coffee", "30мл", "30ml"),
-    MenuItem("cappuccino", "Капучино", "Cappuccino", 45, "coffee", "200мл", "200ml"),
-    MenuItem("latte", "Латте", "Latte", 50, "coffee", "250мл с молоком", "250ml with milk"),
-    MenuItem("avg_check", "Средний чек", "Average check", 150, "meta", "150 MDL на человека", "150 MDL per person"),
+    MenuItem(
+        "bread_white",
+        "Хлеб белый",
+        "White Bread",
+        25,
+        "bakery",
+        "Домашний белый хлеб",
+        "Homemade white bread",
+    ),
+    MenuItem(
+        "bread_rye",
+        "Хлеб ржаной",
+        "Rye Bread",
+        28,
+        "bakery",
+        "Ржаной хлеб на закваске",
+        "Rye sourdough bread",
+    ),
+    MenuItem(
+        "croissant",
+        "Круассан",
+        "Croissant",
+        35,
+        "bakery",
+        "Классический круассан",
+        "Classic croissant",
+        "dishes/croissant.png",
+    ),
+    MenuItem(
+        "croissant_choco",
+        "Круассан с шоколадом",
+        "Chocolate Croissant",
+        40,
+        "bakery",
+        "Круассан с шоколадом",
+        "Chocolate croissant",
+    ),
+    MenuItem(
+        "baguette",
+        "Багет",
+        "Baguette",
+        30,
+        "bakery",
+        "Хрустящий багет",
+        "Crispy baguette",
+    ),
+    MenuItem(
+        "cinnamon_roll",
+        "Булочка с корицей",
+        "Cinnamon Roll",
+        32,
+        "bakery",
+        "Булочка с корицей",
+        "Cinnamon roll",
+    ),
+    MenuItem(
+        "espresso",
+        "Эспрессо",
+        "Espresso",
+        30,
+        "coffee",
+        "30 мл, крепкий",
+        "30ml, strong",
+    ),
+    MenuItem(
+        "cappuccino",
+        "Капучино",
+        "Cappuccino",
+        45,
+        "coffee",
+        "200 мл, с молочной пенкой",
+        "200ml, with milk foam",
+        "dishes/cappuccino.png",
+    ),
+    MenuItem("latte", "Латте", "Latte", 50, "coffee", "250 мл, мягкий", "250ml, soft"),
+    MenuItem(
+        "avg_check",
+        "Средний чек",
+        "Average Check",
+        150,
+        "meta",
+        "Средний чек 150 MDL",
+        "Average check 150 MDL",
+    ),
 ]
 
-def get_menu_by_category() -> Dict[str, List[MenuItem]]:
-    out: Dict[str, List[MenuItem]] = {}
-    for it in MENU:
-        out.setdefault(it.category, []).append(it)
-    return out
 
-def get_seo_for_page(page: str, lang: str) -> Dict[str, str]:
-    lang = "ru" if lang == "ru" else "en"
-    if page == "index":
-        return {"title": SEO_DEFAULT[f"title_{lang}"], "description": SEO_DEFAULT[f"description_{lang}"]}
-    if page == "menu":
-        return {"title": f"Меню {CAFE_IDENTITY['name']} - цены в MDL" if lang=="ru" else f"{CAFE_IDENTITY['name']} Menu - prices in MDL",
-                "description": SEO_DEFAULT[f"description_{lang}"]}
-    if page == "about":
-        return {"title": f"О нас - {CAFE_IDENTITY['name']}" if lang=="ru" else f"About - {CAFE_IDENTITY['name']}",
-                "description": ABOUT[lang]}
-    return {"title": SEO_DEFAULT[f"title_{lang}"], "description": SEO_DEFAULT[f"description_{lang}"]}
+def get_menu_by_category(lang: str = "ru") -> Dict[str, List[MenuItem]]:
+    by_cat: Dict[str, List[MenuItem]] = defaultdict(list)
+    for item in MENU:
+        by_cat[item.category].append(item)
+    return dict(by_cat)
+
+
+def get_menu(lang: str = "ru"):
+    return MENU
