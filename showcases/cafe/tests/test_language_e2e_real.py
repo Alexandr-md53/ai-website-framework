@@ -99,7 +99,7 @@ def test_admin_language():
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
-    return True
+    assert True
 
 def test_visitor_persistence():
     client, service, out_dir, up_dir = make_client()
@@ -155,7 +155,7 @@ def test_visitor_persistence():
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
-    return result_query_local
+    assert result_query_local
 
 def test_precedence():
     client, service, out_dir, up_dir = make_client()
@@ -185,7 +185,7 @@ def test_precedence():
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
-    return True
+    assert True
 
 def test_isolation():
     client, service, out_dir, up_dir = make_client()
@@ -227,7 +227,7 @@ def test_isolation():
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
-    return True
+    assert True
 
 def test_missing_translation():
     client, service, out_dir, up_dir = make_client()
@@ -275,7 +275,7 @@ def test_missing_translation():
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
-    return result
+    assert result
 
 def test_invalid_language():
     client, service, out_dir, up_dir = make_client()
@@ -324,7 +324,7 @@ def test_invalid_language():
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
-    return True
+    assert True
 
 def test_real_generation():
     print("\n=== TEST G — Real static generation ===")
@@ -406,7 +406,7 @@ def test_real_generation():
 
     shutil.rmtree(tmp_out, ignore_errors=True)
     shutil.rmtree(tmp_uploads, ignore_errors=True)
-    return True
+    assert True
 
 def test_generation_isolation():
     print("\n=== TEST H — Generation isolation ===")
@@ -458,7 +458,7 @@ def test_generation_isolation():
 
     shutil.rmtree(tmp_out, ignore_errors=True)
     shutil.rmtree(tmp_uploads, ignore_errors=True)
-    return True
+    assert True
 
 def test_full_lifecycle():
     print("\n=== TEST I — Full lifecycle E2E ===")
@@ -550,7 +550,7 @@ def test_full_lifecycle():
     shutil.rmtree(tmp_out, ignore_errors=True)
     shutil.rmtree(tmp_uploads, ignore_errors=True)
     print("FULL E2E PASS")
-    return True
+    assert True
 
 if __name__ == "__main__":
     # Mock minimal ai_framework modules for standalone run (when run outside pytest)
