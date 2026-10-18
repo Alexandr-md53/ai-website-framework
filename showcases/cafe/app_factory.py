@@ -4,6 +4,8 @@ Fixed Slice 2: implement missing routes from FROZEN_ROUTES
 """
 
 from __future__ import annotations
+from showcases.cafe.services.cafe_profile_service import cafe_profile_service
+from showcases.cafe.services.cafe_admin_security import is_admin_configured, verify_admin, generate_csrf_token, validate_csrf_token
 
 import uuid
 from decimal import Decimal
@@ -386,6 +388,19 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
 
     @app.get("/admin")
     def admin_dashboard(request: Request):
+        import base64
+        if not is_admin_configured():
+            raise HTTPException(status_code=403, detail="Admin closed")
+        auth = request.headers.get("authorization","")
+        if not auth.startswith("Basic "):
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        try:
+            dec = base64.b64decode(auth.split(" ",1)[1]).decode()
+            u,pw = dec.split(":",1)
+        except Exception:
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        if not verify_admin(u,pw):
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
         lang = _get_admin_lang(request)
         ui = cafe_language_service.get_ui(lang)
         dashboard_title = ui.get("admin", {}).get("dashboard_title", "") if isinstance(ui, dict) else ""
@@ -394,6 +409,62 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
             "ui": ui,
             "dashboard": dashboard_title,
         }
+
+    @app.get("/admin/profile")
+    def admin_profile_get(request: Request):
+        import base64
+        from fastapi.responses import HTMLResponse
+        from jinja2 import Environment, FileSystemLoader
+        if not is_admin_configured():
+            raise HTTPException(status_code=403, detail="Admin closed")
+        auth = request.headers.get("authorization","")
+        if not auth.startswith("Basic "):
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        try:
+            dec = base64.b64decode(auth.split(" ",1)[1]).decode()
+            u,pw = dec.split(":",1)
+        except Exception:
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        if not verify_admin(u,pw):
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        env = Environment(loader=FileSystemLoader("showcases/cafe/templates"))
+        tmpl = env.get_template("admin/profile.html")
+        data_profile = cafe_profile_service.get_profile()
+        csrf = generate_csrf_token()
+        html = tmpl.render(data={"profile": data_profile, "contact": data_profile["contact"]}, profile=data_profile, csrf_token=csrf)
+        return HTMLResponse(html)
+
+    @app.post("/admin/profile")
+    async def admin_profile_post(request: Request):
+        import base64
+        from fastapi.responses import RedirectResponse
+        if not is_admin_configured():
+            raise HTTPException(status_code=403, detail="Admin closed")
+        auth = request.headers.get("authorization","")
+        if not auth.startswith("Basic "):
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        try:
+            dec = base64.b64decode(auth.split(" ",1)[1]).decode()
+            u,pw = dec.split(":",1)
+        except Exception:
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        if not verify_admin(u,pw):
+            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+        form = await request.form()
+        if not validate_csrf_token(form.get("csrf_token","")):
+            raise HTTPException(status_code=403, detail="CSRF invalid")
+        payload = {
+            "name": {"ru": form.get("profile_name_ru",""), "ro": form.get("profile_name_ro",""), "en": form.get("profile_name_en","")},
+            "city": {"ru": form.get("profile_city_ru",""), "ro": form.get("profile_city_ro",""), "en": form.get("profile_city_en","")},
+            "contact": {
+                "phone": form.get("contact_phone",""),
+                "email": form.get("contact_email",""),
+                "address": {"ru": form.get("contact_address_ru",""), "ro": form.get("contact_address_ru",""), "en": form.get("contact_address_ru","")},
+                "map_url": form.get("contact_map_url",""),
+            }
+        }
+        cafe_profile_service.update_profile(payload)
+        return RedirectResponse(url="/admin/profile", status_code=302)
 
     @app.get("/public/menu")
     def public_menu(request: Request):

@@ -1,0 +1,21 @@
+﻿{% extends "admin/base.html" %}
+{% block content %}
+<h1>Profile Settings</h1>
+<form method="POST" action="/admin/profile" class="admin-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<h3>Name</h3>
+<label>RU <input name="profile_name_ru" value="{{ data.profile.name.ru }}"></label>
+<label>RO <input name="profile_name_ro" value="{{ data.profile.name.ro }}"></label>
+<label>EN <input name="profile_name_en" value="{{ data.profile.name.en }}"></label>
+<h3>City</h3>
+<label>RU <input name="profile_city_ru" value="{{ data.profile.city.ru }}"></label>
+<label>RO <input name="profile_city_ro" value="{{ data.profile.city.ro }}"></label>
+<label>EN <input name="profile_city_en" value="{{ data.profile.city.en }}"></label>
+<h3>Contact</h3>
+<label>Phone <input name="contact_phone" value="{{ data.contact.phone }}"></label>
+<label>Email <input name="contact_email" value="{{ data.contact.email }}"></label>
+<label>Address RU <input name="contact_address_ru" value="{{ data.contact.address.ru }}"></label>
+<label>Map URL <input name="contact_map_url" value="{{ data.contact.map_url }}"></label>
+<button type="submit">Save</button>
+</form>
+{% endblock %}

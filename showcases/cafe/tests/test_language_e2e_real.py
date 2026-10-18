@@ -1,3 +1,11 @@
+import os
+os.environ["CAFE_ADMIN_USER"]="admin"
+os.environ["CAFE_ADMIN_PASSWORD"]="secret123"
+import base64
+def _auth():
+    tok = base64.b64encode(b"admin:secret123").decode()
+    return {"Authorization": f"Basic {tok}"}
+
 """
 Real HTTP E2E Language Tests — Café v0.3
 No mocked framework, real TestClient, real filesystem generation
@@ -56,7 +64,7 @@ def test_admin_language():
     client, service, out_dir, up_dir = make_client()
     print("\n=== TEST A — Admin language ===")
     # EN
-    r = client.get("/admin?lang=en")
+    r = client.get("/admin?lang=en", headers=_auth())
     assert r.status_code == 200, f"admin en status {r.status_code}"
     data = r.json()
     print(f"REQUEST: GET /admin?lang=en")
@@ -66,7 +74,7 @@ def test_admin_language():
     print("PASS EN contains English UI")
 
     # RO
-    r = client.get("/admin?lang=ro")
+    r = client.get("/admin?lang=ro", headers=_auth())
     assert r.status_code == 200
     data = r.json()
     print(f"REQUEST: GET /admin?lang=ro RESPONSE lang={data['lang']} ui title={data['ui']['admin']['dashboard_title']}")
@@ -75,7 +83,7 @@ def test_admin_language():
     print("PASS RO")
 
     # XX fallback ru
-    r = client.get("/admin?lang=xx")
+    r = client.get("/admin?lang=xx", headers=_auth())
     data = r.json()
     print(f"REQUEST: GET /admin?lang=xx RESPONSE {data['lang']}")
     assert data["lang"] == "ru"
@@ -83,7 +91,7 @@ def test_admin_language():
     print("PASS XX fallback ru")
 
     # default ru
-    r = client.get("/admin")
+    r = client.get("/admin", headers=_auth())
     data = r.json()
     print(f"REQUEST: GET /admin default RESPONSE {data['lang']}")
     assert data["lang"] == "ru"
@@ -190,7 +198,7 @@ def test_isolation():
     print(f"Visitor set ru -> {r.json()['lang']}")
 
     # admin en
-    r = client.get("/admin?lang=en")
+    r = client.get("/admin?lang=en", headers=_auth())
     data = r.json()
     print(f"GET /admin?lang=en -> lang {data['lang']}")
     assert data["lang"] == "en"
@@ -203,7 +211,7 @@ def test_isolation():
     print("PASS Admin does not mutate Visitor")
 
     # set admin ro
-    r = client.get("/admin?lang=ro")
+    r = client.get("/admin?lang=ro", headers=_auth())
     assert r.json()["lang"] == "ro"
     r = client.get("/public/menu")
     print(f"After admin ro, visitor lang {r.json()['lang']} expected ru")
@@ -212,7 +220,7 @@ def test_isolation():
 
     # opposite direction: visitor en should not mutate admin default
     client.get("/set_language/en")
-    r = client.get("/admin")
+    r = client.get("/admin", headers=_auth())
     print(f"GET /admin no lang after visitor en -> lang {r.json()['lang']} expected ru (admin default)")
     assert r.json()["lang"] == "ru"
     print("PASS Visitor does not mutate Admin")
