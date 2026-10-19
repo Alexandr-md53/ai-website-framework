@@ -5,7 +5,12 @@ Fixed Slice 2: implement missing routes from FROZEN_ROUTES
 
 from __future__ import annotations
 from showcases.cafe.services.cafe_profile_service import cafe_profile_service
-from showcases.cafe.services.cafe_admin_security import is_admin_configured, verify_admin, generate_csrf_token, validate_csrf_token
+from showcases.cafe.services.cafe_admin_security import (
+    is_admin_configured,
+    verify_admin,
+    generate_csrf_token,
+    validate_csrf_token,
+)
 
 import uuid
 from decimal import Decimal
@@ -18,7 +23,10 @@ from pydantic import BaseModel
 
 from ai_framework.rendering.static_writer import StaticSiteWriter
 from showcases.cafe.services.cafe_image_service import CafeImageService
-from showcases.cafe.services.cafe_language_service import CafeLanguageService, cafe_language_service
+from showcases.cafe.services.cafe_language_service import (
+    CafeLanguageService,
+    cafe_language_service,
+)
 from showcases.cafe.services.cafe_menu_service import (
     CafeMenuService,
     NotFoundError,
@@ -60,6 +68,7 @@ FROZEN_ROUTES = [
     ("GET", "/public/menu/{category_slug}/{item_slug}"),
 ]
 
+
 class CreateCategoryIn(BaseModel):
     name: str
     slug: str
@@ -69,6 +78,7 @@ class CreateCategoryIn(BaseModel):
     description_ru: str | None = None
     description_ro: str | None = None
     description_en: str | None = None
+
 
 class CreateItemIn(BaseModel):
     title: str
@@ -85,6 +95,7 @@ class CreateItemIn(BaseModel):
     description_ro: str | None = None
     description_en: str | None = None
 
+
 class UpdateItemIn(BaseModel):
     title: str | None = None
     description: str | None = None
@@ -92,17 +103,21 @@ class UpdateItemIn(BaseModel):
     stock_quantity: int | None = None
     category_id: str | None = None
 
+
 class UpdateSeoIn(BaseModel):
     seo_title: str | None = None
     seo_description: str | None = None
     canonical_url: str | None = None
 
+
 class SetAvailabilityIn(BaseModel):
     stock_quantity: int | None = None
+
 
 class CreateOrderLineIn(BaseModel):
     menu_item_id: str
     quantity: int
+
 
 class CreateOrderIn(BaseModel):
     lines: List[CreateOrderLineIn]
@@ -116,13 +131,22 @@ def _parse_uuid(value: str) -> uuid.UUID:
 
 
 def _to_dict_category(cat) -> Dict[str, Any]:
-    return {"id": str(cat.id), "name": cat.name, "slug": cat.slug, "is_published": cat.is_published}
+    return {
+        "id": str(cat.id),
+        "name": cat.name,
+        "slug": cat.slug,
+        "is_published": cat.is_published,
+    }
 
 
 def _to_dict_item(item) -> Dict[str, Any]:
     image_filename = getattr(item, "image_filename", None)
-    image_url = f"/static/uploads/menu/catalog/{image_filename}" if image_filename else None
-    image_url_detail = f"/static/uploads/menu/detail/{image_filename}" if image_filename else None
+    image_url = (
+        f"/static/uploads/menu/catalog/{image_filename}" if image_filename else None
+    )
+    image_url_detail = (
+        f"/static/uploads/menu/detail/{image_filename}" if image_filename else None
+    )
     return {
         "id": str(item.id),
         "title": item.title,
@@ -137,7 +161,13 @@ def _to_dict_item(item) -> Dict[str, Any]:
         "is_published": item.is_published,
         "is_available": item.is_available,
         "status": item.status.value,
-        "seo": {"seo_title": item.seo.seo_title, "seo_description": item.seo.seo_description, "canonical_url": item.seo.canonical_url} if item.seo else None,
+        "seo": {
+            "seo_title": item.seo.seo_title,
+            "seo_description": item.seo.seo_description,
+            "canonical_url": item.seo.canonical_url,
+        }
+        if item.seo
+        else None,
         "dietary_tags": item.dietary_tags,
         "title_ru": getattr(item, "title_ru", None),
         "title_en": getattr(item, "title_en", None),
@@ -151,14 +181,26 @@ def _to_dict_item(item) -> Dict[str, Any]:
 def _to_dict_order(order) -> Dict[str, Any]:
     return {
         "id": str(order.id),
-        "lines": [{"menu_item_id": str(l.menu_item_id), "quantity": l.quantity, "price_snapshot": str(l.price_snapshot)} for l in order.lines],
+        "lines": [
+            {
+                "menu_item_id": str(l.menu_item_id),
+                "quantity": l.quantity,
+                "price_snapshot": str(l.price_snapshot),
+            }
+            for l in order.lines
+        ],
         "total": str(order.total),
         "status": order.status.value,
         "created_at": order.created_at,
     }
 
 
-def create_app(service: CafeMenuService | None = None, out_dir: str | Path | None = None, image_service: CafeImageService | None = None, uploads_root: str | Path | None = None) -> FastAPI:
+def create_app(
+    service: CafeMenuService | None = None,
+    out_dir: str | Path | None = None,
+    image_service: CafeImageService | None = None,
+    uploads_root: str | Path | None = None,
+) -> FastAPI:
     service = service or CafeMenuService()
     out_dir = Path(out_dir) if out_dir else Path("showcases/cafe/output")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -169,7 +211,9 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
         image_service = image_service or CafeImageService()
 
     renderer = CafeRenderer()
-    generator = CafeSiteGenerator(service, renderer, language_service=cafe_language_service)
+    generator = CafeSiteGenerator(
+        service, renderer, language_service=cafe_language_service
+    )
     writer = StaticSiteWriter()
 
     app = FastAPI(title="Cafe Vertical v0.1")
@@ -184,7 +228,9 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
     def _get_visitor_lang(request: Request):
         cookies = dict(request.cookies)
         query_params = dict(request.query_params)
-        return cafe_language_service.get_visitor_lang(cookies=cookies, query_params=query_params, session=None)
+        return cafe_language_service.get_visitor_lang(
+            cookies=cookies, query_params=query_params, session=None
+        )
 
     def _get_admin_lang(request: Request):
         query_params = dict(request.query_params)
@@ -291,7 +337,12 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
     def update_seo(id: str, payload: UpdateSeoIn):
         try:
             item_id = _parse_uuid(id)
-            item = service.update_seo(item_id, payload.seo_title, payload.seo_description, payload.canonical_url)
+            item = service.update_seo(
+                item_id,
+                payload.seo_title,
+                payload.seo_description,
+                payload.canonical_url,
+            )
             return _to_dict_item(item)
         except NotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
@@ -389,21 +440,32 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
     @app.get("/admin")
     def admin_dashboard(request: Request):
         import base64
+
         if not is_admin_configured():
             raise HTTPException(status_code=403, detail="Admin closed")
-        auth = request.headers.get("authorization","")
+        auth = request.headers.get("authorization", "")
         if not auth.startswith("Basic "):
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
         try:
-            dec = base64.b64decode(auth.split(" ",1)[1]).decode()
-            u,pw = dec.split(":",1)
+            dec = base64.b64decode(auth.split(" ", 1)[1]).decode()
+            u, pw = dec.split(":", 1)
         except Exception:
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
-        if not verify_admin(u,pw):
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
+        if not verify_admin(u, pw):
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
         lang = _get_admin_lang(request)
         ui = cafe_language_service.get_ui(lang)
-        dashboard_title = ui.get("admin", {}).get("dashboard_title", "") if isinstance(ui, dict) else ""
+        dashboard_title = (
+            ui.get("admin", {}).get("dashboard_title", "")
+            if isinstance(ui, dict)
+            else ""
+        )
         return {
             "lang": lang,
             "ui": ui,
@@ -414,54 +476,87 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
     def admin_profile_get(request: Request):
         import base64
         from fastapi.responses import HTMLResponse
-        from jinja2 import Environment, FileSystemLoader
+        from jinja2 import Environment, FileSystemLoader, select_autoescape
+
         if not is_admin_configured():
             raise HTTPException(status_code=403, detail="Admin closed")
-        auth = request.headers.get("authorization","")
+        auth = request.headers.get("authorization", "")
         if not auth.startswith("Basic "):
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
         try:
-            dec = base64.b64decode(auth.split(" ",1)[1]).decode()
-            u,pw = dec.split(":",1)
+            dec = base64.b64decode(auth.split(" ", 1)[1]).decode()
+            u, pw = dec.split(":", 1)
         except Exception:
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
-        if not verify_admin(u,pw):
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
-        env = Environment(loader=FileSystemLoader("showcases/cafe/templates"))
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
+        if not verify_admin(u, pw):
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
+        env = Environment(
+            loader=FileSystemLoader("showcases/cafe/templates"),
+            autoescape=select_autoescape(["html", "xml"]),
+        )
         tmpl = env.get_template("admin/profile.html")
         data_profile = cafe_profile_service.get_profile()
         csrf = generate_csrf_token()
-        html = tmpl.render(data={"profile": data_profile, "contact": data_profile["contact"]}, profile=data_profile, csrf_token=csrf)
+        html = tmpl.render(
+            data={"profile": data_profile, "contact": data_profile["contact"]},
+            profile=data_profile,
+            csrf_token=csrf,
+        )
         return HTMLResponse(html)
 
     @app.post("/admin/profile")
     async def admin_profile_post(request: Request):
         import base64
         from fastapi.responses import RedirectResponse
+
         if not is_admin_configured():
             raise HTTPException(status_code=403, detail="Admin closed")
-        auth = request.headers.get("authorization","")
+        auth = request.headers.get("authorization", "")
         if not auth.startswith("Basic "):
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
         try:
-            dec = base64.b64decode(auth.split(" ",1)[1]).decode()
-            u,pw = dec.split(":",1)
+            dec = base64.b64decode(auth.split(" ", 1)[1]).decode()
+            u, pw = dec.split(":", 1)
         except Exception:
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
-        if not verify_admin(u,pw):
-            raise HTTPException(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'})
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
+        if not verify_admin(u, pw):
+            raise HTTPException(
+                status_code=401, headers={"WWW-Authenticate": 'Basic realm="Admin"'}
+            )
         form = await request.form()
-        if not validate_csrf_token(form.get("csrf_token","")):
+        if not validate_csrf_token(form.get("csrf_token", "")):
             raise HTTPException(status_code=403, detail="CSRF invalid")
         payload = {
-            "name": {"ru": form.get("profile_name_ru",""), "ro": form.get("profile_name_ro",""), "en": form.get("profile_name_en","")},
-            "city": {"ru": form.get("profile_city_ru",""), "ro": form.get("profile_city_ro",""), "en": form.get("profile_city_en","")},
+            "name": {
+                "ru": form.get("profile_name_ru", ""),
+                "ro": form.get("profile_name_ro", ""),
+                "en": form.get("profile_name_en", ""),
+            },
+            "city": {
+                "ru": form.get("profile_city_ru", ""),
+                "ro": form.get("profile_city_ro", ""),
+                "en": form.get("profile_city_en", ""),
+            },
             "contact": {
-                "phone": form.get("contact_phone",""),
-                "email": form.get("contact_email",""),
-                "address": {"ru": form.get("contact_address_ru",""), "ro": form.get("contact_address_ru",""), "en": form.get("contact_address_ru","")},
-                "map_url": form.get("contact_map_url",""),
-            }
+                "phone": form.get("contact_phone", ""),
+                "email": form.get("contact_email", ""),
+                "address": {
+                    "ru": form.get("contact_address_ru", ""),
+                    "ro": form.get("contact_address_ro", ""),
+                    "en": form.get("contact_address_en", ""),
+                },
+                "map_url": form.get("contact_map_url", ""),
+            },
         }
         cafe_profile_service.update_profile(payload)
         return RedirectResponse(url="/admin/profile", status_code=302)
@@ -473,12 +568,16 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
         categories = service.list_categories()
         localized_cats = []
         for cat in categories:
-            loc_name = cafe_language_service.get_localized_field(cat, "name", lang) or cat.name
-            localized_cats.append({
-                "slug": cat.slug,
-                "name": loc_name,
-                "lang": lang,
-            })
+            loc_name = (
+                cafe_language_service.get_localized_field(cat, "name", lang) or cat.name
+            )
+            localized_cats.append(
+                {
+                    "slug": cat.slug,
+                    "name": loc_name,
+                    "lang": lang,
+                }
+            )
         return {
             "lang": lang,
             "categories": localized_cats,
@@ -499,14 +598,22 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
             items = service.list_published(category_slug=category_slug)
             localized_items = []
             for it in items:
-                loc_title = it.get_localized_title(lang) if hasattr(it, "get_localized_title") else it.title
-                localized_items.append({
-                    "slug": it.slug,
-                    "title": loc_title,
-                    "localized_title": loc_title,
-                    "price": str(it.price),
-                })
-            loc_cat_name = cafe_language_service.get_localized_field(cat, "name", lang) or cat.name
+                loc_title = (
+                    it.get_localized_title(lang)
+                    if hasattr(it, "get_localized_title")
+                    else it.title
+                )
+                localized_items.append(
+                    {
+                        "slug": it.slug,
+                        "title": loc_title,
+                        "localized_title": loc_title,
+                        "price": str(it.price),
+                    }
+                )
+            loc_cat_name = (
+                cafe_language_service.get_localized_field(cat, "name", lang) or cat.name
+            )
             return {
                 "lang": lang,
                 "category": category_slug,
@@ -518,8 +625,16 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
             # fallback: treat as item slug (old route /public/menu/{slug})
             try:
                 item = service.get_published_by_slug(category_slug)
-                loc_title = item.get_localized_title(lang) if hasattr(item, "get_localized_title") else item.title
-                loc_desc = item.get_localized_description(lang) if hasattr(item, "get_localized_description") else item.description
+                loc_title = (
+                    item.get_localized_title(lang)
+                    if hasattr(item, "get_localized_title")
+                    else item.title
+                )
+                loc_desc = (
+                    item.get_localized_description(lang)
+                    if hasattr(item, "get_localized_description")
+                    else item.description
+                )
                 return {
                     "lang": lang,
                     "slug": item.slug,
@@ -532,7 +647,10 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
                     "ui": ui,
                 }
             except NotFoundError:
-                raise HTTPException(status_code=404, detail=f"Category or item {category_slug} not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Category or item {category_slug} not found",
+                )
 
     @app.get("/public/menu/{category_slug}/{item_slug}")
     def public_menu_item_detail(category_slug: str, item_slug: str, request: Request):
@@ -545,7 +663,9 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
                 cat = c
                 break
         if not cat:
-            raise HTTPException(status_code=404, detail=f"Category {category_slug} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Category {category_slug} not found"
+            )
         try:
             item = service.get_published_by_slug(item_slug)
         except NotFoundError as e:
@@ -554,8 +674,16 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
             # allow if item exists but category mismatch? For strict, 404
             # but for test we allow if same cat id or ignore
             pass
-        loc_title = item.get_localized_title(lang) if hasattr(item, "get_localized_title") else item.title
-        loc_desc = item.get_localized_description(lang) if hasattr(item, "get_localized_description") else item.description
+        loc_title = (
+            item.get_localized_title(lang)
+            if hasattr(item, "get_localized_title")
+            else item.title
+        )
+        loc_desc = (
+            item.get_localized_description(lang)
+            if hasattr(item, "get_localized_description")
+            else item.description
+        )
         return {
             "lang": lang,
             "category": category_slug,
@@ -580,8 +708,16 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
         lang = _get_visitor_lang(request)
         try:
             item = service.get_published_by_slug(slug)
-            loc_title = item.get_localized_title(lang) if hasattr(item, "get_localized_title") else item.title
-            loc_desc = item.get_localized_description(lang) if hasattr(item, "get_localized_description") else item.description
+            loc_title = (
+                item.get_localized_title(lang)
+                if hasattr(item, "get_localized_title")
+                else item.title
+            )
+            loc_desc = (
+                item.get_localized_description(lang)
+                if hasattr(item, "get_localized_description")
+                else item.description
+            )
             return {
                 "lang": lang,
                 "slug": item.slug,
@@ -600,7 +736,10 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
     @app.post("/orders")
     def create_order(payload: CreateOrderIn):
         try:
-            lines = [{"menu_item_id": l.menu_item_id, "quantity": l.quantity} for l in payload.lines]
+            lines = [
+                {"menu_item_id": l.menu_item_id, "quantity": l.quantity}
+                for l in payload.lines
+            ]
             order = service.create_order(lines)
             return _to_dict_order(order)
         except (ValidationError, ValueError) as e:
@@ -680,7 +819,11 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
             pages = generator.generate(lang=effective_lang)
             writer.write(pages, out_dir, clean=True)
             app.state.pages = [{"path": p.path, "kind": p.kind} for p in pages]
-            return {"generated": len(pages), "pages": app.state.pages, "lang": effective_lang}
+            return {
+                "generated": len(pages),
+                "pages": app.state.pages,
+                "lang": effective_lang,
+            }
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -698,6 +841,7 @@ def create_app(service: CafeMenuService | None = None, out_dir: str | Path | Non
     @app.get("/sitemap.xml")
     def get_sitemap():
         from fastapi.responses import Response
+
         target = out_dir / "sitemap.xml"
         if not target.exists():
             pages = generator.generate()

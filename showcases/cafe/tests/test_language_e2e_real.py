@@ -1,10 +1,26 @@
-import os
-os.environ["CAFE_ADMIN_USER"]="admin"
-os.environ["CAFE_ADMIN_PASSWORD"]="secret123"
+import pytest
+
+
+@pytest.fixture
+def cafe_admin_env(monkeypatch):
+    monkeypatch.setenv("CAFE_ADMIN_USER", "admin")
+    monkeypatch.setenv("CAFE_ADMIN_PASSWORD", "secret123")
+    monkeypatch.setenv("CAFE_SECRET_KEY", "test-secret-for-e2e")
+    import importlib
+    import showcases.cafe.services.cafe_admin_security as sec
+
+    importlib.reload(sec)
+    yield
+    importlib.reload(sec)
+
+
 import base64
+
+
 def _auth():
     tok = base64.b64encode(b"admin:secret123").decode()
     return {"Authorization": f"Basic {tok}"}
+
 
 """
 Real HTTP E2E Language Tests — Café v0.3
@@ -22,7 +38,8 @@ from showcases.cafe.services.cafe_menu_service import CafeMenuService
 from showcases.cafe.services.cafe_image_service import CafeImageService
 from showcases.cafe.app_factory import create_app
 
-def make_client(tmp_out=None):
+
+def make_client(cafe_admin_env=None, tmp_out=None):
     service = CafeMenuService()
     # temporary uploads root
     tmp_uploads = Path(tempfile.mkdtemp(prefix="cafe_uploads_"))
@@ -31,6 +48,7 @@ def make_client(tmp_out=None):
     app = create_app(service=service, out_dir=tmp_out, image_service=image_service)
     client = TestClient(app, follow_redirects=False)
     return client, service, tmp_out, tmp_uploads
+
 
 def create_sample_category_and_item(service):
     cat = service.create_category(
@@ -59,8 +77,9 @@ def create_sample_category_and_item(service):
     service.publish(item.id)
     return cat, item
 
+
 # ---------- Test A ----------
-def test_admin_language():
+def test_admin_language(cafe_admin_env):
     client, service, out_dir, up_dir = make_client()
     print("\n=== TEST A — Admin language ===")
     # EN
@@ -70,16 +89,26 @@ def test_admin_language():
     print(f"REQUEST: GET /admin?lang=en")
     print(f"RESPONSE: {data}")
     assert data["lang"] == "en"
-    assert "Cafe Admin Panel" in str(data["ui"]) or "Admin" in str(data["dashboard"]) or "Cafe Admin Panel" in data["dashboard"] or data["ui"]["admin"]["dashboard_title"] == "Cafe Admin Panel"
+    assert (
+        "Cafe Admin Panel" in str(data["ui"])
+        or "Admin" in str(data["dashboard"])
+        or "Cafe Admin Panel" in data["dashboard"]
+        or data["ui"]["admin"]["dashboard_title"] == "Cafe Admin Panel"
+    )
     print("PASS EN contains English UI")
 
     # RO
     r = client.get("/admin?lang=ro", headers=_auth())
     assert r.status_code == 200
     data = r.json()
-    print(f"REQUEST: GET /admin?lang=ro RESPONSE lang={data['lang']} ui title={data['ui']['admin']['dashboard_title']}")
+    print(
+        f"REQUEST: GET /admin?lang=ro RESPONSE lang={data['lang']} ui title={data['ui']['admin']['dashboard_title']}"
+    )
     assert data["lang"] == "ro"
-    assert "Cafenea" in data["ui"]["admin"]["dashboard_title"] or "Panou" in data["ui"]["admin"]["dashboard_title"]
+    assert (
+        "Cafenea" in data["ui"]["admin"]["dashboard_title"]
+        or "Panou" in data["ui"]["admin"]["dashboard_title"]
+    )
     print("PASS RO")
 
     # XX fallback ru
@@ -101,13 +130,16 @@ def test_admin_language():
     shutil.rmtree(up_dir, ignore_errors=True)
     assert True
 
-def test_visitor_persistence():
+
+def test_visitor_persistence(cafe_admin_env):
     client, service, out_dir, up_dir = make_client()
     cat, item = create_sample_category_and_item(service)
     print("\n=== TEST B — Visitor persistence cookie jar ===")
     # default RU
     r = client.get("/public/menu")
-    print(f"GET /public/menu default status {r.status_code} json {r.json() if r.headers.get('content-type','').startswith('application/json') else r.text[:200]}")
+    print(
+        f"GET /public/menu default status {r.status_code} json {r.json() if r.headers.get('content-type', '').startswith('application/json') else r.text[:200]}"
+    )
     assert r.status_code == 200
     data = r.json()
     assert data["lang"] == "ru"
@@ -116,9 +148,11 @@ def test_visitor_persistence():
 
     # set_language/en 302 Set-Cookie
     r = client.get("/set_language/en", follow_redirects=False)
-    print(f"GET /set_language/en status {r.status_code} headers {r.headers.get('set-cookie')} location {r.headers.get('location')}")
+    print(
+        f"GET /set_language/en status {r.status_code} headers {r.headers.get('set-cookie')} location {r.headers.get('location')}"
+    )
     assert r.status_code in (302, 307)
-    set_cookie = r.headers.get("set-cookie","")
+    set_cookie = r.headers.get("set-cookie", "")
     assert "lang=en" in set_cookie
     # TestClient should store cookie automatically if we don't disable? We disabled follow_redirects, but cookie jar still stores?
     # Manually check client cookies
@@ -127,7 +161,9 @@ def test_visitor_persistence():
     # second request should be EN via cookie
     r = client.get("/public/menu")
     data = r.json()
-    print(f"GET /public/menu after cookie en RESPONSE lang={data['lang']} categories {data['categories']}")
+    print(
+        f"GET /public/menu after cookie en RESPONSE lang={data['lang']} categories {data['categories']}"
+    )
     assert data["lang"] == "en"
     assert any("Coffee" in c["name"] for c in data["categories"])
     print("PASS cookie persistence EN")
@@ -143,21 +179,26 @@ def test_visitor_persistence():
     # after query override, what is cookie? Should remain en if query is request-local
     r = client.get("/public/menu")
     data = r.json()
-    print(f"GET /public/menu after RO query override RESPONSE lang={data['lang']} cookies {client.cookies} — if still en then query was request-local, if ro then query mutated cookie")
+    print(
+        f"GET /public/menu after RO query override RESPONSE lang={data['lang']} cookies {client.cookies} — if still en then query was request-local, if ro then query mutated cookie"
+    )
     # According to current contract, query override is request-local, cookie remains en
     # So we expect en again
     if data["lang"] == "en":
         print("RESULT: query override was request-local, cookie stayed en — VERIFIED")
         result_query_local = True
     else:
-        print(f"RESULT: query override mutated state to {data['lang']} — cookie changed or session mutated")
+        print(
+            f"RESULT: query override mutated state to {data['lang']} — cookie changed or session mutated"
+        )
         result_query_local = False
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
     assert result_query_local
 
-def test_precedence():
+
+def test_precedence(cafe_admin_env):
     client, service, out_dir, up_dir = make_client()
     cat, item = create_sample_category_and_item(service)
     print("\n=== TEST C — Cookie / Query precedence ===")
@@ -170,7 +211,9 @@ def test_precedence():
     # Case with query override
     r = client.get("/public/menu?lang=ro")
     data = r.json()
-    print(f"Case with cookie=en query=ro -> lang={data['lang']} expected ro (query priority)")
+    print(
+        f"Case with cookie=en query=ro -> lang={data['lang']} expected ro (query priority)"
+    )
     assert data["lang"] == "ro"
     # After, cookie should still be en if query local
     r = client.get("/public/menu")
@@ -179,7 +222,9 @@ def test_precedence():
     # Session NOT USED check
     # Our implementation get_visitor_lang checks session dict but FastAPI app does not have session storage, only cookie
     # So we document: SESSION NOT USED IN CAFÉ RUNTIME
-    print("SESSION: NOT USED IN CAFÉ RUNTIME (no Flask session middleware, only cookie + query)")
+    print(
+        "SESSION: NOT USED IN CAFÉ RUNTIME (no Flask session middleware, only cookie + query)"
+    )
     print("COOKIE: VERIFIED")
     print("QUERY: VERIFIED")
 
@@ -187,7 +232,8 @@ def test_precedence():
     shutil.rmtree(up_dir, ignore_errors=True)
     assert True
 
-def test_isolation():
+
+def test_isolation(cafe_admin_env):
     client, service, out_dir, up_dir = make_client()
     cat, item = create_sample_category_and_item(service)
     print("\n=== TEST D — Admin / Visitor isolation ===")
@@ -221,7 +267,9 @@ def test_isolation():
     # opposite direction: visitor en should not mutate admin default
     client.get("/set_language/en")
     r = client.get("/admin", headers=_auth())
-    print(f"GET /admin no lang after visitor en -> lang {r.json()['lang']} expected ru (admin default)")
+    print(
+        f"GET /admin no lang after visitor en -> lang {r.json()['lang']} expected ru (admin default)"
+    )
     assert r.json()["lang"] == "ru"
     print("PASS Visitor does not mutate Admin")
 
@@ -229,9 +277,12 @@ def test_isolation():
     shutil.rmtree(up_dir, ignore_errors=True)
     assert True
 
-def test_missing_translation():
+
+def test_missing_translation(cafe_admin_env):
     client, service, out_dir, up_dir = make_client()
-    cat = service.create_category(name="Coffee", slug="coffee", name_ru="Кофе", name_en="Coffee", name_ro="Cafea")
+    cat = service.create_category(
+        name="Coffee", slug="coffee", name_ru="Кофе", name_en="Coffee", name_ro="Cafea"
+    )
     item = service.create_item(
         title="Espresso Base",
         slug="espresso",
@@ -250,19 +301,27 @@ def test_missing_translation():
     # RU
     r = client.get(f"/public/menu/coffee/espresso?lang=ru")
     data = r.json()
-    print(f"GET /public/menu/coffee/espresso?lang=ru -> localized_title {data['localized_title']} expected Эспрессо")
+    print(
+        f"GET /public/menu/coffee/espresso?lang=ru -> localized_title {data['localized_title']} expected Эспрессо"
+    )
     assert "Эспрессо" in data["localized_title"]
 
     # EN missing -> should fallback to RU per contract
     r = client.get(f"/public/menu/coffee/espresso?lang=en")
     data = r.json()
-    print(f"GET ...?lang=en with empty en title -> localized_title '{data['localized_title']}' lang field {data['lang']}")
-    print(f"Full item: ru={data['title_ru']} en='{data['title_en']}' ro={data['title_ro']}")
+    print(
+        f"GET ...?lang=en with empty en title -> localized_title '{data['localized_title']}' lang field {data['lang']}"
+    )
+    print(
+        f"Full item: ru={data['title_ru']} en='{data['title_en']}' ro={data['title_ro']}"
+    )
     if data["localized_title"] == "Эспрессо":
         print("RESULT: EN missing -> RU fallback VERIFIED")
         result = True
     else:
-        print(f"RESULT: EN missing -> got '{data['localized_title']}' NOT fallback, GAP")
+        print(
+            f"RESULT: EN missing -> got '{data['localized_title']}' NOT fallback, GAP"
+        )
         result = False
 
     # also check HTML rendered via site generation? For Test E we check HTTP API, but also need rendered HTML check later
@@ -271,13 +330,16 @@ def test_missing_translation():
     data = r.json()
     print(f"GET /public/menu/coffee?lang=en items {data['items']}")
     # item title should fallback
-    assert any("Эспрессо" in it["title"] or "Espresso" in it["title"] for it in data["items"])
+    assert any(
+        "Эспрессо" in it["title"] or "Espresso" in it["title"] for it in data["items"]
+    )
 
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.rmtree(up_dir, ignore_errors=True)
     assert result
 
-def test_invalid_language():
+
+def test_invalid_language(cafe_admin_env):
     client, service, out_dir, up_dir = make_client()
     cat, item = create_sample_category_and_item(service)
     print("\n=== TEST F — Invalid language ===")
@@ -290,7 +352,9 @@ def test_invalid_language():
     # query xx
     r = client.get("/public/menu?lang=xx")
     data = r.json()
-    print(f"GET /public/menu?lang=xx status {r.status_code} lang {data['lang']} expected fallback ru")
+    print(
+        f"GET /public/menu?lang=xx status {r.status_code} lang {data['lang']} expected fallback ru"
+    )
     assert r.status_code == 200
     # According to normalize, xx -> ru
     assert data["lang"] == "ru"
@@ -298,7 +362,9 @@ def test_invalid_language():
 
     # after invalid query, cookie should still be en if query local
     r = client.get("/public/menu")
-    print(f"After invalid query, visitor lang {r.json()['lang']} cookie {client.cookies} — should still be en if request-local")
+    print(
+        f"After invalid query, visitor lang {r.json()['lang']} cookie {client.cookies} — should still be en if request-local"
+    )
     # Expect en again (query local)
     if r.json()["lang"] == "en":
         print("RESULT: invalid query did not corrupt cookie — VERIFIED")
@@ -307,10 +373,12 @@ def test_invalid_language():
 
     # set_language xx
     r = client.get("/set_language/xx", follow_redirects=False)
-    print(f"GET /set_language/xx status {r.status_code} set-cookie {r.headers.get('set-cookie')}")
-    assert r.status_code in (302,307)
+    print(
+        f"GET /set_language/xx status {r.status_code} set-cookie {r.headers.get('set-cookie')}"
+    )
+    assert r.status_code in (302, 307)
     # Should set cookie lang=ru (fallback) not xx
-    set_cookie = r.headers.get("set-cookie","")
+    set_cookie = r.headers.get("set-cookie", "")
     print(f"Set-Cookie header: {set_cookie}")
     if "lang=ru" in set_cookie:
         print("PASS set_language/xx sets fallback ru cookie, not xx — VERIFIED")
@@ -326,7 +394,8 @@ def test_invalid_language():
     shutil.rmtree(up_dir, ignore_errors=True)
     assert True
 
-def test_real_generation():
+
+def test_real_generation(cafe_admin_env):
     print("\n=== TEST G — Real static generation ===")
     tmp_out = Path(tempfile.mkdtemp(prefix="cafe_site_"))
     tmp_uploads = Path(tempfile.mkdtemp(prefix="cafe_up_"))
@@ -338,19 +407,32 @@ def test_real_generation():
 
     image_service = CafeImageService(uploads_root=tmp_uploads)
     renderer = CafeRenderer()
-    generator = CafeSiteGenerator(service, renderer, language_service=cafe_language_service)
+    generator = CafeSiteGenerator(
+        service, renderer, language_service=cafe_language_service
+    )
 
-    cat = service.create_category(name="Coffee", slug="coffee", name_ru="Кофе", name_en="Coffee", name_ro="Cafea")
+    cat = service.create_category(
+        name="Coffee", slug="coffee", name_ru="Кофе", name_en="Coffee", name_ro="Cafea"
+    )
     item = service.create_item(
-        title="Latte Base", slug="latte", description="Desc long enough for publish gate 12345", price=Decimal("4.5"), category_id=cat.id,
-        title_ru="Латте", title_en="Latte", title_ro="Latte",
-        description_ru="Вкусный латте", description_en="Tasty latte", description_ro="Latte gustos"
+        title="Latte Base",
+        slug="latte",
+        description="Desc long enough for publish gate 12345",
+        price=Decimal("4.5"),
+        category_id=cat.id,
+        title_ru="Латте",
+        title_en="Latte",
+        title_ro="Latte",
+        description_ru="Вкусный латте",
+        description_en="Tasty latte",
+        description_ro="Latte gustos",
     )
     service.publish(item.id)
 
     # generate ru
     pages_ru = generator.generate(lang="ru")
     from ai_framework.rendering.static_writer import StaticSiteWriter
+
     writer = StaticSiteWriter()
     # write to ru-specific dir to avoid overwrite? Our generator.generate writes to paths like index.html, menu/index.html etc.
     # For this test we write each lang to separate out dirs for isolation check later, but first test real filesystem output
@@ -363,7 +445,9 @@ def test_real_generation():
     assert index_ru.exists()
     content_ru = index_ru.read_text(encoding="utf-8")
     print(f"RU index.html snippet: {content_ru[:500]}")
-    assert "Кофе" in content_ru or "Кофе" in (out_ru / "menu" / "index.html").read_text(encoding="utf-8")
+    assert "Кофе" in content_ru or "Кофе" in (out_ru / "menu" / "index.html").read_text(
+        encoding="utf-8"
+    )
     # check item page
     item_ru_path = out_ru / "menu" / "coffee" / "latte" / "index.html"
     assert item_ru_path.exists()
@@ -381,8 +465,12 @@ def test_real_generation():
     index_en = out_en / "index.html"
     content_en = index_en.read_text(encoding="utf-8")
     print(f"EN index.html snippet: {content_en[:500]}")
-    assert "Coffee" in content_en or "Coffee" in (out_en / "menu" / "index.html").read_text(encoding="utf-8")
-    item_en_content = (out_en / "menu" / "coffee" / "latte" / "index.html").read_text(encoding="utf-8")
+    assert "Coffee" in content_en or "Coffee" in (
+        out_en / "menu" / "index.html"
+    ).read_text(encoding="utf-8")
+    item_en_content = (out_en / "menu" / "coffee" / "latte" / "index.html").read_text(
+        encoding="utf-8"
+    )
     print(f"EN item page snippet: {item_en_content[:500]}")
     assert "Latte" in item_en_content
     print("PASS EN filesystem contains Coffee/Latte")
@@ -408,7 +496,8 @@ def test_real_generation():
     shutil.rmtree(tmp_uploads, ignore_errors=True)
     assert True
 
-def test_generation_isolation():
+
+def test_generation_isolation(cafe_admin_env):
     print("\n=== TEST H — Generation isolation ===")
     tmp_out = Path(tempfile.mkdtemp(prefix="cafe_site_iso_"))
     tmp_uploads = Path(tempfile.mkdtemp(prefix="cafe_up_iso_"))
@@ -417,13 +506,28 @@ def test_generation_isolation():
     from showcases.cafe.services.cafe_renderer import CafeRenderer
     from showcases.cafe.services.cafe_site_generator import CafeSiteGenerator
     from showcases.cafe.services.cafe_language_service import cafe_language_service
+
     image_service = CafeImageService(uploads_root=tmp_uploads)
     renderer = CafeRenderer()
-    generator = CafeSiteGenerator(service, renderer, language_service=cafe_language_service)
-    cat = service.create_category(name="Coffee", slug="coffee", name_ru="Кофе", name_en="Coffee", name_ro="Cafea")
-    item = service.create_item(title="Latte", slug="latte", description="Desc long enough", price=Decimal("4.5"), category_id=cat.id, title_ru="Латте", title_en="Latte", title_ro="Latte")
+    generator = CafeSiteGenerator(
+        service, renderer, language_service=cafe_language_service
+    )
+    cat = service.create_category(
+        name="Coffee", slug="coffee", name_ru="Кофе", name_en="Coffee", name_ro="Cafea"
+    )
+    item = service.create_item(
+        title="Latte",
+        slug="latte",
+        description="Desc long enough",
+        price=Decimal("4.5"),
+        category_id=cat.id,
+        title_ru="Латте",
+        title_en="Latte",
+        title_ro="Latte",
+    )
     service.publish(item.id)
     from ai_framework.rendering.static_writer import StaticSiteWriter
+
     writer = StaticSiteWriter()
 
     # generate all languages via generate_all_languages which uses prefixed paths
@@ -435,14 +539,18 @@ def test_generation_isolation():
     has_ru_main = "index.html" in paths
     has_en_prefixed = any(p.startswith("en/") for p in paths)
     has_ro_prefixed = any(p.startswith("ro/") for p in paths)
-    print(f"Has ru main index.html: {has_ru_main}, has en/ prefixed: {has_en_prefixed}, has ro/ prefixed: {has_ro_prefixed}")
+    print(
+        f"Has ru main index.html: {has_ru_main}, has en/ prefixed: {has_en_prefixed}, has ro/ prefixed: {has_ro_prefixed}"
+    )
     # write all
     writer.write(all_pages, tmp_out, clean=True)
     # check existence
     assert (tmp_out / "index.html").exists()
     assert (tmp_out / "en" / "index.html").exists()
     assert (tmp_out / "ro" / "index.html").exists()
-    print(f"Files exist: ru index {(tmp_out / 'index.html').exists()}, en {(tmp_out / 'en' / 'index.html').exists()}, ro {(tmp_out / 'ro' / 'index.html').exists()}")
+    print(
+        f"Files exist: ru index {(tmp_out / 'index.html').exists()}, en {(tmp_out / 'en' / 'index.html').exists()}, ro {(tmp_out / 'ro' / 'index.html').exists()}"
+    )
 
     # content checks
     ru_content = (tmp_out / "index.html").read_text(encoding="utf-8")
@@ -460,28 +568,53 @@ def test_generation_isolation():
     shutil.rmtree(tmp_uploads, ignore_errors=True)
     assert True
 
-def test_full_lifecycle():
+
+def test_full_lifecycle(cafe_admin_env):
     print("\n=== TEST I — Full lifecycle E2E ===")
     tmp_out = Path(tempfile.mkdtemp(prefix="cafe_full_"))
     tmp_uploads = Path(tempfile.mkdtemp(prefix="cafe_full_up_"))
     service = CafeMenuService()
     from showcases.cafe.services.cafe_image_service import CafeImageService
+
     image_service = CafeImageService(uploads_root=tmp_uploads)
     app = create_app(service=service, out_dir=tmp_out, image_service=image_service)
     client = TestClient(app)
 
     # 1. create category via HTTP? Our factory only has POST /menu/categories with name,slug, translations optional
-    r = client.post("/menu/categories", json={"name":"Coffee","slug":"coffee","name_ru":"Кофе","name_en":"Coffee","name_ro":"Cafea","description_ru":"Категория кофе","description_en":"Coffee cat","description_ro":"Cafea cat"})
+    r = client.post(
+        "/menu/categories",
+        json={
+            "name": "Coffee",
+            "slug": "coffee",
+            "name_ru": "Кофе",
+            "name_en": "Coffee",
+            "name_ro": "Cafea",
+            "description_ru": "Категория кофе",
+            "description_en": "Coffee cat",
+            "description_ro": "Cafea cat",
+        },
+    )
     print(f"POST /menu/categories status {r.status_code} response {r.json()}")
     assert r.status_code == 200
     cat_id = r.json()["id"]
 
     # 2. create multilingual item
-    r = client.post("/menu/items", json={
-        "title":"Latte Base","slug":"latte","description":"Desc long enough for publish gate 12345","price":"4.5","category_id":cat_id,
-        "title_ru":"Латте","title_en":"Latte","title_ro":"Latte",
-        "description_ru":"Вкусный латте","description_en":"Tasty latte","description_ro":"Latte gustos"
-    })
+    r = client.post(
+        "/menu/items",
+        json={
+            "title": "Latte Base",
+            "slug": "latte",
+            "description": "Desc long enough for publish gate 12345",
+            "price": "4.5",
+            "category_id": cat_id,
+            "title_ru": "Латте",
+            "title_en": "Latte",
+            "title_ro": "Latte",
+            "description_ru": "Вкусный латте",
+            "description_en": "Tasty latte",
+            "description_ro": "Latte gustos",
+        },
+    )
     print(f"POST /menu/items status {r.status_code} {r.json()}")
     assert r.status_code == 200
     item_id = r.json()["id"]
@@ -501,8 +634,10 @@ def test_full_lifecycle():
 
     # switch to EN
     r = client.get("/set_language/en", follow_redirects=False)
-    print(f"GET /set_language/en status {r.status_code} cookie {r.headers.get('set-cookie')}")
-    assert r.status_code in (302,307)
+    print(
+        f"GET /set_language/en status {r.status_code} cookie {r.headers.get('set-cookie')}"
+    )
+    assert r.status_code in (302, 307)
     # client should now have en cookie
     r = client.get("/public/menu")
     data = r.json()
@@ -552,10 +687,12 @@ def test_full_lifecycle():
     print("FULL E2E PASS")
     assert True
 
+
 if __name__ == "__main__":
     # Mock minimal ai_framework modules for standalone run (when run outside pytest)
     import sys, types
     from pathlib import Path
+
     af = types.ModuleType("ai_framework")
     rendering = types.ModuleType("ai_framework.rendering")
     jinja_mod = types.ModuleType("ai_framework.rendering.jinja")
@@ -567,24 +704,36 @@ if __name__ == "__main__":
         def __init__(self, td):
             self.td = Path(td)
             from jinja2 import Environment, FileSystemLoader
+
             self.env = Environment(loader=FileSystemLoader(str(self.td)))
+
         def render(self, tpl, ctx):
             return self.env.get_template(tpl).render(**ctx)
 
     class SeoContext:
         def __init__(self, **kw):
-            for k,v in kw.items(): setattr(self,k,v)
+            for k, v in kw.items():
+                setattr(self, k, v)
             self.title = kw.get("title") or kw.get("seo_title") or ""
             self.description = kw.get("seo_description") or ""
+
     class SeoInjector:
-        def ensure_seo(self, html, ctx): return html
+        def ensure_seo(self, html, ctx):
+            return html
+
     class GeneratedPage:
-        def __init__(self, path, html, kind): self.path=path; self.html=html; self.kind=kind
+        def __init__(self, path, html, kind):
+            self.path = path
+            self.html = html
+            self.kind = kind
+
     class StaticSiteWriter:
         def write(self, pages, out_dir, clean=True):
             out_dir = Path(out_dir)
             if clean and out_dir.exists():
-                import shutil; shutil.rmtree(out_dir)
+                import shutil
+
+                shutil.rmtree(out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
             for p in pages:
                 target = out_dir / p.path
@@ -596,12 +745,12 @@ if __name__ == "__main__":
     seo_mod.SeoContext = SeoContext
     seo_mod.SeoInjector = SeoInjector
     static_writer_mod.StaticSiteWriter = StaticSiteWriter
-    sys.modules["ai_framework"]=af
-    sys.modules["ai_framework.rendering"]=rendering
-    sys.modules["ai_framework.rendering.jinja"]=jinja_mod
-    sys.modules["ai_framework.rendering.generated_page"]=gen_page_mod
-    sys.modules["ai_framework.rendering.seo"]=seo_mod
-    sys.modules["ai_framework.rendering.static_writer"]=static_writer_mod
+    sys.modules["ai_framework"] = af
+    sys.modules["ai_framework.rendering"] = rendering
+    sys.modules["ai_framework.rendering.jinja"] = jinja_mod
+    sys.modules["ai_framework.rendering.generated_page"] = gen_page_mod
+    sys.modules["ai_framework.rendering.seo"] = seo_mod
+    sys.modules["ai_framework.rendering.static_writer"] = static_writer_mod
 
     test_admin_language()
     test_visitor_persistence()
