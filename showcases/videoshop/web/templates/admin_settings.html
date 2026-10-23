@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% set v = values or {} %}
+{% block title %}{{ ui.admin.shop_settings_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.shop_settings_title }}</h1>
+  <p>
+    <a href="/admin/categories">{{ ui.admin.categories }}</a> ·
+    <a href="/admin/products">{{ ui.admin.products }}</a> ·
+    <a href="/admin/pages">{{ ui.admin.pages }}</a>
+  </p>
+  <form class="stack" method="post" action="/admin/settings">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="shop_name">{{ ui.admin.shop_name }}</label>
+    <input id="shop_name" name="shop_name" type="text" value="{{ v.get('shop_name', settings.name) }}">
+    <label for="tagline">{{ ui.admin.tagline }}</label>
+    <input id="tagline" name="tagline" type="text" value="{{ v.get('tagline', settings.tagline) }}">
+    <label for="shop_description">{{ ui.admin.shop_description }}</label>
+    <textarea id="shop_description" name="shop_description">{{ v.get('shop_description', settings.description) }}</textarea>
+    <label for="shop_logo">{{ ui.admin.logo_label }}</label>
+    <input id="shop_logo" name="shop_logo" type="text" value="{{ v.get('shop_logo', settings.logo) }}">
+    <p class="muted">{{ ui.admin.logo_hint }}</p>
+    {% if settings.logo %}
+      <p><img src="/media/{{ settings.logo }}" alt="logo" style="max-height:48px"></p>
+    {% endif %}
+    <div class="row">
+      <div>
+        <label for="contact_email">E-mail</label>
+        <input id="contact_email" name="contact_email" type="text" value="{{ v.get('contact_email', settings.contact_email) }}">
+      </div>
+      <div>
+        <label for="contact_phone">Phone</label>
+        <input id="contact_phone" name="contact_phone" type="text" value="{{ v.get('contact_phone', settings.contact_phone) }}">
+      </div>
+    </div>
+    <label for="contact_address">Address</label>
+    <input id="contact_address" name="contact_address" type="text" value="{{ v.get('contact_address', settings.contact_address) }}">
+    <label for="default_currency">{{ ui.admin.default_currency_label }}</label>
+    <input id="default_currency" name="default_currency" type="text" maxlength="3"
+           value="{{ v.get('default_currency', settings.default_currency) }}">
+
+    <h2>{{ ui.admin.contacts_social_title }}</h2>
+    <label for="social_facebook">{{ ui.admin.facebook_url }}</label>
+    <input id="social_facebook" name="social_facebook" type="text" value="{{ v.get('social_facebook', settings.social_facebook) }}">
+    <label for="social_instagram">{{ ui.admin.instagram_url }}</label>
+    <input id="social_instagram" name="social_instagram" type="text" value="{{ v.get('social_instagram', settings.social_instagram) }}">
+    <label for="social_telegram">{{ ui.admin.telegram_url }}</label>
+    <input id="social_telegram" name="social_telegram" type="text" value="{{ v.get('social_telegram', settings.social_telegram) }}">
+
+    <h2>SEO</h2>
+    <label for="seo_title">{{ ui.admin.seo_title }}</label>
+    <input id="seo_title" name="seo_title" type="text" value="{{ v.get('seo_title', settings.seo_title) }}">
+    <p class="muted">{{ ui.admin.seo_title_hint }}</p>
+    <label for="seo_description">{{ ui.admin.seo_description }}</label>
+    <textarea id="seo_description" name="seo_description">{{ v.get('seo_description', settings.seo_description) }}</textarea>
+    <p class="muted">{{ ui.admin.seo_description_hint }}</p>
+
+    <h2>{{ ui.admin.languages_title }}</h2>
+    <p class="muted">{{ ui.admin.languages_hint }}</p>
+    {% for index in language_slots %}
+      {% set entry = languages[index] if languages|length > index else None %}
+      <div class="row">
+        <div><input name="language_code_{{ index }}" type="text" maxlength="5" placeholder="code ({{ index + 1 }})" value="{{ v.get('language_code_' ~ index, entry[0] if entry else '') }}"></div>
+        <div><input name="language_title_{{ index }}" type="text" placeholder="title ({{ index + 1 }})" value="{{ v.get('language_title_' ~ index, entry[1] if entry else '') }}"></div>
+      </div>
+    {% endfor %}
+    <label for="default_language">{{ ui.admin.default_language }}</label>
+    <select id="default_language" name="default_language">
+      {% for index in language_slots %}
+        {% set entry = languages[index] if languages|length > index else None %}
+        {% if entry %}
+          <option value="{{ entry[0] }}" {% if v.get('default_language', settings.default_language) == entry[0] %}selected{% endif %}>{{ entry[1] }} ({{ entry[0] }})</option>
+        {% endif %}
+      {% endfor %}
+    </select>
+    <button type="submit">{{ ui.admin.save_settings }}</button>
+  </form>
+
+  <form class="stack" id="logo-form">
+    <h2>{{ ui.admin.upload_logo_title }}</h2>
+    <p class="muted">{{ ui.admin.upload_logo_hint }}</p>
+    <input id="logo-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+    <button type="submit">{{ ui.admin.upload_logo_button }}</button>
+    <p class="muted" id="logo-status"></p>
+  </form>
+  <script>
+    document.getElementById('logo-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const input = document.getElementById('logo-file');
+      const status = document.getElementById('logo-status');
+      if (!input.files.length) { status.textContent = '{{ ui.admin.choose_file }}'; return; }
+      const file = input.files[0];
+      // the original name travels in the query string: a browser cannot send
+      // non-ASCII header values (e.g. "логотип.png")
+      const url = '/admin/settings/logo?name=' + encodeURIComponent(file.name);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'application/octet-stream',
+                   'X-CSRF-Token': '{{ csrf }}' },
+        body: file,
+      });
+      if (response.ok || response.redirected) { window.location = '/admin/settings'; }
+      else { status.textContent = '{{ ui.admin.upload_failed }}' + await response.text(); }
+    });
+  </script>
+{% endblock %}

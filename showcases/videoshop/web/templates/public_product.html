@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ product.text(lang).name }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <nav class="crumbs" aria-label="breadcrumb">
+    <ol>
+      <li><a href="/?lang={{ lang }}">{{ ui.breadcrumb_home }}</a></li>
+      <li><a href="/catalog?lang={{ lang }}">{{ ui.breadcrumb_catalog }}</a></li>
+      {% if category %}
+        <li><a href="/catalog?category={{ category.slug }}&lang={{ lang }}">{{ category.text(lang).name }}</a></li>
+      {% endif %}
+      <li><span aria-current="page">{{ product.text(lang).name }}</span></li>
+    </ol>
+  </nav>
+
+  <h1>{{ product.text(lang).name }}</h1>
+  <p class="price">{{ product.price.format() }}</p>
+
+  {% if product.images %}
+    <div class="thumbs">
+      {% for image in product.images %}
+        {% set big = image.detail_name or image.file_name %}
+        <figure><img src="/media/{{ big }}" alt="{{ product.text(lang).name }}"
+                     onerror="this.src='/media/{{ placeholder_image }}'"></figure>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if product.text(lang).description %}<p>{{ product.text(lang).description }}</p>{% endif %}
+
+  {% set specs = product.attributes_for(lang) %}
+  {% if specs %}
+    <h2>{{ ui.specs }}</h2>
+    <table class="specs">
+      {% for name, value in specs %}
+        <tr><th>{{ name }}</th><td>{{ value }}</td></tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+
+  {% if related %}
+    <section class="related">
+      <h2>{{ ui.related_title }}</h2>
+      <div class="grid">
+        {% for item in related %}
+          {% set product = item %}
+          {% include "_product_card.html" %}
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

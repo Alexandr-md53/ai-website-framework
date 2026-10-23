@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.order_title }} {{ order.number }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.order_title }} {{ order.number }}</h1>
+  <p><a href="/admin/orders">{{ ui.admin.orders_title }}</a></p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <p><strong>{{ ui.admin.order_customer }}:</strong> {{ order.name }} · {{ order.contact }}</p>
+  {% if order.address %}<p class="muted">{{ order.address }}</p>{% endif %}
+  {% if order.comment %}<p class="muted">{{ order.comment }}</p>{% endif %}
+  <p><strong>{{ ui.admin.order_status }}:</strong> <span class="badge">{{ ui.admin["status_" ~ order.status] }}</span></p>
+  <p><strong>{{ ui.admin.orders_date }}:</strong> {{ order.created_at }}</p>
+
+  <h2>{{ ui.admin.order_items }}</h2>
+  <table>
+    <tr><th>{{ ui.admin.name }}</th><th>{{ ui.admin.price }}</th><th>{{ ui.admin.orders_total }}</th></tr>
+    {% for item in order.items %}
+      <tr>
+        <td>{{ item.product_name }}</td>
+        <td>{{ item.price_minor }} {{ item.currency }} × {{ item.quantity }}</td>
+        <td>{{ item.line_total_minor }} {{ item.currency }}</td>
+      </tr>
+    {% endfor %}
+    <tr><th>{{ ui.admin.orders_total }}</th><td></td><th>{{ order.total_minor }} {{ order.currency }}</th></tr>
+  </table>
+
+  {% if allowed_targets %}
+    <form class="stack" method="post" action="/admin/orders/{{ order.number }}/status">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <h2>{{ ui.admin.order_change_status }}</h2>
+      <select name="status">
+        {% for status in allowed_targets %}
+          <option value="{{ status }}">{{ ui.admin["status_" ~ status] }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn--success" type="submit">{{ ui.admin.order_change_status }}</button>
+    </form>
+  {% endif %}
+{% endblock %}

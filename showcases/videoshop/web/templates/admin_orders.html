@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.orders_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.orders_title }}</h1>
+  <p><a href="/admin">{{ ui.admin.dashboard }}</a> · <a href="/admin/products">{{ ui.admin.products }}</a> · <a href="/admin/requests">{{ ui.admin.requests }}</a></p>
+  <form class="search-form" method="get" action="/admin/orders">
+    <select name="status">
+      <option value="">{{ ui.admin.filter_all_categories }}</option>
+      {% for status in statuses %}
+        <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ ui.admin["status_" ~ status] }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">{{ ui.admin.search_button }}</button>
+  </form>
+  <table>
+    <tr>
+      <th>{{ ui.admin.orders_number }}</th><th>{{ ui.admin.orders_date }}</th>
+      <th>{{ ui.admin.orders_customer }}</th><th>{{ ui.admin.orders_total }}</th>
+      <th>{{ ui.admin.orders_status }}</th><th></th>
+    </tr>
+    {% for item in orders %}
+      <tr>
+        <td>{{ item.number }}</td>
+        <td>{{ item.created_at }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.total_minor }} {{ item.currency }}</td>
+        <td><span class="badge">{{ ui.admin["status_" ~ item.status] }}</span></td>
+        <td><a href="/admin/orders/{{ item.number }}">{{ ui.admin.orders_view }}</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if not orders %}<p class="muted">{{ ui.admin.orders_empty }}</p>{% endif %}
+{% endblock %}

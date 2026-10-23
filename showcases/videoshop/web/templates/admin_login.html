@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.sign_in_title }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.sign_in_title }}</h1>
+  <form class="stack" method="post" action="/admin/login">
+    <label for="username">{{ ui.admin.username }}</label>
+    <input id="username" name="username" type="text" autocomplete="username" required>
+    <label for="password">{{ ui.admin.password }}</label>
+    <div class="password-field">
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="password-toggle" type="button" id="password-toggle"
+              aria-label="{{ ui.admin.show_password }}" title="{{ ui.admin.show_password }}">&#128065;</button>
+    </div>
+    <button type="submit">{{ ui.admin.sign_in }}</button>
+  </form>
+  <p class="muted">{{ ui.admin.credentials_note }}</p>
+  <script>
+    (function () {
+      const toggle = document.getElementById('password-toggle');
+      const input = document.getElementById('password');
+      if (!toggle || !input) { return; }
+      toggle.addEventListener('click', function () {
+        const hidden = input.type === 'password';
+        input.type = hidden ? 'text' : 'password';
+        toggle.setAttribute('aria-label', hidden ? '{{ ui.admin.hide_password }}' : '{{ ui.admin.show_password }}');
+        toggle.setAttribute('title', hidden ? '{{ ui.admin.hide_password }}' : '{{ ui.admin.show_password }}');
+      });
+    })();
+  </script>
+{% endblock %}

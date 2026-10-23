@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.about_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  {# scaffold page: the home page "why choose us" cards link to these anchors,
+     so a click never dead-ends even before the owner fills the page #}
+  <h1>{{ ui.about_title }}</h1>
+  <p class="muted">{{ ui.about_text }}</p>
+
+  <section id="dealer" class="page-section">
+    <h2>{{ ui.about_dealer }}</h2>
+  </section>
+  <section id="warranty" class="page-section">
+    <h2>{{ ui.about_warranty }}</h2>
+  </section>
+  <section id="delivery" class="page-section">
+    <h2>{{ ui.about_delivery }}</h2>
+  </section>
+  <section id="payment" class="page-section">
+    <h2>{{ ui.about_payment }}</h2>
+  </section>
+{% endblock %}

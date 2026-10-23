@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Catalog — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.nav_catalog }}</h1>
+  <p>
+    <a href="/catalog?lang={{ lang }}">{{ ui.all_categories }}</a>
+    {% for category in categories %}
+      · <a href="/catalog?category={{ category.slug }}&lang={{ lang }}">
+        {% if selected_category and selected_category.id == category.id %}<strong>{{ category.text(lang).name }}</strong>{% else %}{{ category.text(lang).name }}{% endif %}
+      </a>
+    {% endfor %}
+  </p>
+  {% if products %}
+    <div class="grid">
+      {% for product in products %}
+        {% include "_product_card.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">{{ ui.no_products }}</p>
+  {% endif %}
+{% endblock %}

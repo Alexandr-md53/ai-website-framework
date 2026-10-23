@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.pages }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.pages }}</h1>
+  <p>
+    <a href="/admin/categories">{{ ui.admin.categories }}</a> ·
+    <a href="/admin/products">{{ ui.admin.products }}</a> ·
+    <a href="/admin/settings">{{ ui.admin.settings }}</a> ·
+    <a href="/admin/pages/new">{{ ui.admin.pages_new }}</a>
+  </p>
+  <table>
+    <tr>
+      <th>{{ ui.admin.id }}</th><th>{{ ui.admin.slug }}</th><th>{{ ui.admin.title }}</th>
+      <th>{{ ui.admin.status }}</th><th></th>
+    </tr>
+    {% for page in pages %}
+      <tr>
+        <td>{{ page.id }}</td>
+        <td>{{ page.slug or '—' }}</td>
+        <td>{{ page.text(lang).title }}</td>
+        <td><span class="badge {% if page.is_published %}live{% else %}draft{% endif %}">{% if page.is_published %}{{ ui.admin.badge_published }}{% else %}{{ ui.admin.badge_hidden }}{% endif %}</span></td>
+        <td><a href="/admin/pages/{{ page.id }}">{{ ui.admin.edit }}</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if not pages %}<p class="muted">{{ ui.admin.pages_empty }}</p>{% endif %}
+{% endblock %}

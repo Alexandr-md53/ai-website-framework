@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.dashboard }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.dashboard }}</h1>
+  <p>
+    <a href="/admin/categories">{{ ui.admin.categories }} ({{ categories|length }})</a> ·
+    <a href="/admin/products">{{ ui.admin.products }} ({{ products|length }})</a> ·
+    <a href="/admin/pages">{{ ui.admin.pages }}</a> ·
+    {% if new_orders_count is not none %}<a href="/admin/orders?status=new">{{ ui.admin.orders_new_count }}: {{ new_orders_count }}</a> ·{% endif %}
+    <a href="/admin/settings">{{ ui.admin.settings }}</a>
+  </p>
+  <form method="post" action="/admin/logout">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="secondary" type="submit">{{ ui.admin.sign_out }}</button>
+  </form>
+{% endblock %}

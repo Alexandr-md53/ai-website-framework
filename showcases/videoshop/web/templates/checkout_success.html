@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.checkout_success_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.checkout_success_title }}</h1>
+  <p class="muted">{{ ui.checkout_thanks }}</p>
+  {% if order_number %}
+    <p><strong>{{ ui.checkout_order_number }}:</strong> {{ order_number }}</p>
+    {% if order_token %}
+      <p><a class="btn btn--gold" href="/order/{{ order_number }}?token={{ order_token }}">{{ ui.checkout_open_order }}</a></p>
+    {% else %}
+      <p class="muted">{{ ui.checkout_no_token }}</p>
+    {% endif %}
+  {% endif %}
+  <a class="btn btn--ghost" href="/catalog?lang={{ lang }}">{{ ui.checkout_back }}</a>
+{% endblock %}

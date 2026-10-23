@@ -1,0 +1,28 @@
+{% if sent %}<p class="footer-note footer-note--ok">{{ ui.request_ok }}</p>{% endif %}
+{% if request_error_code %}<p class="error">{{ ui[request_error_code] }}</p>{% elif request_error %}<p class="error">{{ ui.request_error }}</p>{% endif %}
+<section class="request" id="request">
+  <div class="section__head">
+    <h2 class="section__title">{{ ui.request_title }}</h2>
+    <p class="section__sub">{{ ui.request_hint }}</p>
+  </div>
+  <form class="request-form" method="post" action="/request{% if lang %}?lang={{ lang }}{% endif %}">
+    <input type="hidden" name="csrf" value="{{ request_token }}">
+    <div class="request-form__row">
+      <label for="request-name">{{ ui.request_name }}
+        <input id="request-name" name="name" type="text" required maxlength="120"
+               value="{{ (request_values or {}).get('name', '') }}">
+      </label>
+      <label for="request-contact">{{ ui.request_contact }}
+        <input id="request-contact" name="contact" type="text" required maxlength="200"
+               value="{{ (request_values or {}).get('contact', '') }}">
+      </label>
+    </div>
+    <label for="request-message">{{ ui.request_message }}
+      <textarea id="request-message" name="message" rows="4" maxlength="2000">{{ (request_values or {}).get('message', '') }}</textarea>
+    </label>
+    <div class="request-form__trap" aria-hidden="true">
+      <label for="request-company">Company <input id="request-company" name="company" type="text" tabindex="-1" autocomplete="off"></label>
+    </div>
+    <button class="btn btn--gold" type="submit">{{ ui.request_send }}</button>
+  </form>
+</section>

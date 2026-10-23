@@ -1,0 +1,13 @@
+[project]
+name = "videoshop-showcase"
+version = "0.1.0"
+description = "VideoShop showcase (B-prime hardening track) - local test configuration"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["../.."]
+addopts = "-q --tb=short"
+python_files = "test_*.py"
+python_functions = "test_*"

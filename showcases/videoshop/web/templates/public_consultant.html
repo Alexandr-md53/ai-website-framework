@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.consultant.title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.consultant.title }}</h1>
+  <p class="muted">{{ ui.consultant.intro }}</p>
+
+  <form class="stack" method="get" action="/consultant">
+    {# the form is a GET form: without this field a submit drops ?lang and
+       the result would come back in the shop default language #}
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <label for="scenario">{{ ui.consultant.scenario_label }}</label>
+    <select id="scenario" name="scenario">
+      <option value="">{{ ui.consultant.scenario_none }}</option>
+      {% for scenario in scenarios %}
+        <option value="{{ scenario.scenario_id }}" {% if scenario_id == scenario.scenario_id %}selected{% endif %}>{{ ui.consultant["scenario_" ~ scenario.scenario_id] }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="budget">{{ ui.consultant.budget_label }}</label>
+    <input id="budget" name="budget" type="number" min="0" step="0.01" value="{{ budget }}" placeholder="300000">
+
+    <fieldset>
+      <legend>{{ ui.consultant.have_label }}</legend>
+      {% for key in consultant_categories %}
+        <label><input type="checkbox" name="have" value="{{ key }}" {% if key in already_have %}checked{% endif %}> {{ ui.consultant["cat_" ~ key] }}</label>
+      {% endfor %}
+    </fieldset>
+
+    <button type="submit">{{ ui.consultant.submit }}</button>
+  </form>
+
+  {% if recommendation %}
+    {% set r = recommendation %}
+    <section class="consultant-result">
+      <h2>{{ ui.consultant.result_title }}</h2>
+
+      {% if r.status == "incompatible" %}
+        <p class="notice--warn">{{ ui.consultant.outcome_incompatible }}</p>
+      {% elif r.status == "no_data" %}
+        <p class="notice--warn">{{ ui.consultant.outcome_no_data }}</p>
+      {% elif r.status == "over_budget" %}
+        <p class="notice--warn">{{ ui.consultant.outcome_over_budget }} {{ r.min_total_display }}</p>
+      {% elif r.status == "empty" %}
+        <p class="notice--warn">{{ ui.consultant.outcome_empty }}</p>
+      {% elif r.status == "partial" %}
+        <p class="notice--warn">{{ ui.consultant.outcome_partial }}</p>
+      {% else %}
+        <p class="muted">{{ ui.consultant.outcome_full }}</p>
+      {% endif %}
+
+      {% for group in r.groups %}
+        <h3>{{ ui.consultant["cat_" ~ group.key] }}</h3>
+        <div class="grid">
+          {% for item in group.items %}
+            {% set product = item.product %}
+            {% include "_product_card.html" %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      {% if r.groups %}
+        <p><strong>{{ ui.consultant.total_label }}: {{ r.total_display }}</strong></p>
+      {% endif %}
+
+      {% if r.missing_keys %}
+        <p class="muted">{{ ui.consultant.missing_label }}
+          {% for key in r.missing_keys %}{{ ui.consultant["cat_" ~ key] }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+      {% endif %}
+
+      {% if r.optional_groups %}
+        <h3>{{ ui.consultant.optional_label }}</h3>
+        {% for group in r.optional_groups %}
+          <h4>{{ ui.consultant["cat_" ~ group.key] }}</h4>
+          <div class="grid">
+            {% for item in group.items %}
+              {% set product = item.product %}
+              {% include "_product_card.html" %}
+            {% endfor %}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if r.proxy_used %}<p class="muted">{{ ui.consultant.proxy_note }}</p>{% endif %}
+      {% if r.mount_missing %}<p class="muted">{{ ui.consultant.mount_hint }}</p>{% endif %}
+
+      {% if r.status != "full" and contact_email %}
+        <p><a class="btn" href="mailto:{{ contact_email }}">{{ ui.consultant.cta }}</a></p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

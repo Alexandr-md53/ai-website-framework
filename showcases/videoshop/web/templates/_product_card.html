@@ -1,0 +1,21 @@
+{% set first = product.images[0].catalog_name or product.images[0].file_name if product.images else '' %}
+{% set second = product.images[1].catalog_name or product.images[1].file_name if product.images|length > 1 else '' %}
+<article class="card-p">
+  <a class="card-p__link" href="/product/{{ product.slug }}?lang={{ lang }}">
+    <div class="card-p__media">
+      <img class="card-p__img" src="/media/{{ first or placeholder_image }}" alt="{{ product.text(lang).name }}"
+           loading="lazy" onerror="this.src='/media/{{ placeholder_image }}'">
+      {% if second %}
+        <img class="card-p__img card-p__img--alt" src="/media/{{ second }}" alt=""
+             loading="lazy" onerror="this.src='/media/{{ placeholder_image }}'">
+      {% endif %}
+    </div>
+    <div class="card-p__body">
+      <div class="card-p__name">{{ product.text(lang).name }}</div>
+      {% if product.text(lang).description %}
+        <div class="card-p__desc">{{ product.text(lang).description }}</div>
+      {% endif %}
+      <div class="card-p__price">{{ product.price.format() }}</div>
+    </div>
+  </a>
+</article>

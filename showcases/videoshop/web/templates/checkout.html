@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.checkout_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.checkout_title }}</h1>
+  {% if error_code %}<p class="error">{{ ui[error_code] }}{% if unavailable_names %} ({{ unavailable_names|join(', ') }}){% endif %}</p>{% endif %}
+
+  {% if cart_lines %}
+    <h2>{{ ui.cart_title }}</h2>
+    <div class="cart-page">
+      {% for line in cart_lines %}
+        <article class="cart-line{% if not line.available %} cart-line--unavailable{% endif %}">
+          <div class="cart-line__name">{{ line.name }}</div>
+          {% if line.available %}
+            <div class="cart-line__price">{{ line.price.format() }}</div>
+            <div>&times; {{ line.quantity }}</div>
+            <div class="cart-line__total">{{ line.line_total.format() }}</div>
+          {% else %}
+            <p class="muted">{{ ui.cart_unavailable }}</p>
+          {% endif %}
+        </article>
+      {% endfor %}
+      <div class="cart-total">{{ ui.checkout_total }}: {{ cart_total.format() }}</div>
+    </div>
+    <form class="stack" method="post" action="/checkout{% if lang %}?lang={{ lang }}{% endif %}">
+      <input type="hidden" name="csrf" value="{{ request_token }}">
+      <input type="hidden" name="checkout_token" value="{{ checkout_token }}">
+      <input type="hidden" name="expected_total" value="{{ expected_total_minor }}">
+      <label for="co-name">{{ ui.checkout_name }}</label>
+      <input id="co-name" name="name" type="text" required maxlength="120" value="{{ (values or {}).get('name', '') }}">
+      <label for="co-contact">{{ ui.checkout_contact }}</label>
+      <input id="co-contact" name="contact" type="text" required maxlength="200" value="{{ (values or {}).get('contact', '') }}">
+      <label for="co-address">{{ ui.checkout_address }}</label>
+      <input id="co-address" name="address" type="text" maxlength="300" value="{{ (values or {}).get('address', '') }}">
+      <label for="co-comment">{{ ui.checkout_comment }}</label>
+      <textarea id="co-comment" name="comment" rows="3" maxlength="1000">{{ (values or {}).get('comment', '') }}</textarea>
+      <button class="btn btn--gold" type="submit">{{ ui.checkout_submit }}</button>
+    </form>
+  {% else %}
+    <p class="muted">{{ ui.checkout_empty }}</p>
+    <a class="btn btn--gold" href="/catalog?lang={{ lang }}">{{ ui.checkout_back }}</a>
+  {% endif %}
+{% endblock %}

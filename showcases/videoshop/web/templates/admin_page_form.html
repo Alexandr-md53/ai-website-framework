@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% set v = values or {} %}
+{% block title %}{% if page %}{{ ui.admin.page_edit_title }} #{{ page.id }}{% else %}{{ ui.admin.page_new_title }}{% endif %} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{% if page %}{{ ui.admin.page_edit_title }} #{{ page.id }}{% else %}{{ ui.admin.page_new_title }}{% endif %}</h1>
+  <p><a href="/admin/pages">{{ ui.admin.back_to_pages }}</a>
+     {% if page and page.slug %} · <a href="/page/{{ page.slug }}" target="_blank">{{ ui.admin.view_on_site }}</a>{% endif %}</p>
+
+  <form class="stack" method="post" action="{% if page %}/admin/pages/{{ page.id }}{% else %}/admin/pages/new{% endif %}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="slug">{{ ui.admin.slug_label }}</label>
+    <input id="slug" name="slug" type="text" value="{{ v.get('slug', page.slug if page else '') }}" placeholder="about">
+    <p class="muted">{{ ui.admin.slug_hint }}</p>
+
+    {% for code, title in languages %}
+      <fieldset>
+        <legend>{{ title }} ({{ code }})</legend>
+        <label for="title_{{ code }}">{{ ui.admin.title }}</label>
+        <input id="title_{{ code }}" name="title_{{ code }}" type="text"
+               value="{{ v.get('title_' ~ code, page.text(code).title if page else '') }}">
+        <label for="body_{{ code }}">{{ ui.admin.text }}</label>
+        <textarea id="body_{{ code }}" name="body_{{ code }}" rows="8">{{ v.get('body_' ~ code, page.text(code).body if page else '') }}</textarea>
+      </fieldset>
+    {% endfor %}
+
+    <label><input type="checkbox" name="is_published" value="1"
+      {% if v.get('is_published') or (page and page.is_published) or (not page and not v) %}checked{% endif %}> {{ ui.admin.published }}</label>
+    <button type="submit">{% if page %}{{ ui.admin.save }}{% else %}{{ ui.admin.create_page }}{% endif %}</button>
+  </form>
+
+  {% if page %}
+    <form class="stack" method="post" action="/admin/pages/{{ page.id }}/publish">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="published" value="{% if page.is_published %}0{% else %}1{% endif %}">
+      <button class="secondary" type="submit">{% if page.is_published %}{{ ui.admin.unpublish }}{% else %}{{ ui.admin.publish }}{% endif %}</button>
+    </form>
+    <form class="stack" method="post" action="/admin/pages/{{ page.id }}/delete">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <h2>{{ ui.admin.delete_page_title }}</h2>
+      <p class="muted">{{ ui.admin.delete_page_hint }}</p>
+      <button class="danger" type="submit">{{ ui.admin.delete_page }}</button>
+    </form>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.cart_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.cart_title }}</h1>
+  {% if cart_expired %}<p class="hint">{{ ui.cart_expired_notice }}</p>{% endif %}
+
+  {% if cart_lines %}
+    <div class="cart-page">
+      {% for line in cart_lines %}
+        <article class="cart-line{% if not line.available %} cart-line--unavailable{% endif %}">
+          <div class="cart-line__name">{{ line.name }}</div>
+          {% if line.available %}
+            <div class="cart-line__price">{{ line.price.format() }}</div>
+            <form class="cart-line__form" method="post" action="/cart/update{% if lang %}?lang={{ lang }}{% endif %}">
+              <input type="hidden" name="csrf" value="{{ request_token }}">
+              <input type="hidden" name="item_id" value="{{ line.item_id }}">
+              <input class="cart-line__qty" type="number" name="qty" min="1" max="99" value="{{ line.quantity }}"
+                     aria-label="{{ ui.cart_quantity }}">
+              <button type="submit">{{ ui.cart_update }}</button>
+            </form>
+            <form class="cart-line__form" method="post" action="/cart/remove{% if lang %}?lang={{ lang }}{% endif %}">
+              <input type="hidden" name="csrf" value="{{ request_token }}">
+              <input type="hidden" name="item_id" value="{{ line.item_id }}">
+              <button class="danger" type="submit">{{ ui.cart_remove }}</button>
+            </form>
+            <div class="cart-line__total">{{ line.line_total.format() }}</div>
+          {% else %}
+            <p class="muted">{{ ui.cart_unavailable }}</p>
+          {% endif %}
+        </article>
+      {% endfor %}
+
+      <div class="cart-total">{{ ui.cart_total }}: {{ cart_total.format() }}</div>
+      <div class="cart-actions">
+        <a class="btn btn--ghost" href="/catalog?lang={{ lang }}">{{ ui.cart_continue }}</a>
+        <button class="btn btn--gold" type="button" disabled title="{{ ui.cart_checkout_soon }}">{{ ui.cart_checkout }}</button>
+        <form method="post" action="/cart/clear{% if lang %}?lang={{ lang }}{% endif %}">
+          <input type="hidden" name="csrf" value="{{ request_token }}">
+          <button class="secondary" type="submit">{{ ui.cart_clear }}</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">{{ ui.cart_empty }}</p>
+    <form method="post" action="/cart/clear{% if lang %}?lang={{ lang }}{% endif %}" hidden>
+      <input type="hidden" name="csrf" value="{{ request_token }}">
+    </form>
+    <a class="btn btn--gold" href="/catalog?lang={{ lang }}">{{ ui.cart_continue }}</a>
+  {% endif %}
+{% endblock %}

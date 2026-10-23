@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% set v = values or {} %}
+{% block title %}{% if category %}{{ ui.admin.category_edit_title }} #{{ category.id }}{% else %}{{ ui.admin.category_new_title }}{% endif %} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{% if category %}{{ ui.admin.category_edit_title }} #{{ category.id }}{% else %}{{ ui.admin.category_new_title }}{% endif %}</h1>
+  <p><a href="/admin/categories">{{ ui.admin.back_to_categories }}</a></p>
+
+  <form class="stack" method="post" action="{% if category %}/admin/categories/{{ category.id }}{% else %}/admin/categories/new{% endif %}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="slug">{{ ui.admin.slug_label }}</label>
+    <input id="slug" name="slug" type="text" value="{{ v.get('slug', category.slug if category else '') }}" placeholder="cameras">
+    <p class="muted">{{ ui.admin.slug_hint }}</p>
+
+    {% for code, title in languages %}
+      <fieldset>
+        <legend>{{ title }} ({{ code }})</legend>
+        <label for="name_{{ code }}">{{ ui.admin.name }}</label>
+        <input id="name_{{ code }}" name="name_{{ code }}" type="text"
+               value="{{ v.get('name_' ~ code, category.text(code).name if category else '') }}">
+        <label for="description_{{ code }}">{{ ui.admin.description }}</label>
+        <textarea id="description_{{ code }}" name="description_{{ code }}">{{ v.get('description_' ~ code, category.text(code).description if category else '') }}</textarea>
+      </fieldset>
+    {% endfor %}
+
+    <label><input type="checkbox" name="is_published" value="1"
+      {% if v.get('is_published') or (category and category.is_published) or (not category and not v) %}checked{% endif %}> {{ ui.admin.published }}</label>
+    <button type="submit">{% if category %}{{ ui.admin.save }}{% else %}{{ ui.admin.create_category }}{% endif %}</button>
+  </form>
+
+  {% if not category %}
+    <p class="hint">{{ ui.admin.category_photo_after_save }}</p>
+  {% endif %}
+
+  {% if category %}
+    <form class="stack" id="category-photo-form">
+      <h2>{{ ui.admin.category_photo_title }}</h2>
+      <p class="muted">{{ ui.admin.category_photo_hint }}</p>
+      <div class="photo-preview">
+        <img src="/media/{{ category.image or 'placeholder.jpg' }}" alt="{{ ui.admin.category_photo_current }}"
+             onerror="this.src='/media/placeholder.jpg'">
+        <span class="muted">{{ ui.admin.category_photo_current }}</span>
+      </div>
+      <input id="category-photo" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+      <button type="submit">{{ ui.admin.category_photo_upload }}</button>
+      <p class="muted" id="category-photo-status"></p>
+    </form>
+    <script>
+      document.getElementById('category-photo-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const input = document.getElementById('category-photo');
+        const status = document.getElementById('category-photo-status');
+        if (!input.files.length) { status.textContent = '{{ ui.admin.choose_file }}'; return; }
+        const file = input.files[0];
+        const url = '/admin/categories/{{ category.id }}/image?name=' + encodeURIComponent(file.name);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type || 'application/octet-stream',
+                     'X-CSRF-Token': '{{ csrf }}' },
+          body: file,
+        });
+        if (response.ok || response.redirected) { window.location = '/admin/categories/{{ category.id }}'; }
+        else { status.textContent = '{{ ui.admin.upload_failed }}' + await response.text(); }
+      });
+    </script>
+
+    <form class="stack" method="post" action="/admin/categories/{{ category.id }}/delete">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <h2>{{ ui.admin.delete_category_title }}</h2>
+      <p class="muted">
+        {% if product_count %}{{ ui.admin.category_in_use.replace('{count}', product_count|string) }}{% else %}{{ ui.admin.category_empty }}{% endif %}
+      </p>
+      {% if categories %}
+        <label for="reassign_to">{{ ui.admin.reassign_to }}</label>
+        <select id="reassign_to" name="reassign_to">
+          <option value="">{{ ui.admin.reassign_none }}</option>
+          {% for other in categories %}{% if other.id != category.id %}
+            <option value="{{ other.id }}">{{ other.text(lang).name }} (#{{ other.id }})</option>
+          {% endif %}{% endfor %}
+        </select>
+      {% endif %}
+      <button class="danger" type="submit">{{ ui.admin.delete }}</button>
+    </form>
+  {% endif %}
+{% endblock %}

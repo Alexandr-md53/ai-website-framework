@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.order_title }} {{ order.number }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.order_title }} {{ order.number }}</h1>
+  <p><strong>{{ ui.order_number }}:</strong> {{ order.number }}</p>
+  <p><strong>{{ ui.order_status }}:</strong> {{ ui["order_status_" ~ order.status] }}</p>
+  <p><strong>{{ ui.order_date }}:</strong> {{ order.created_at }}</p>
+
+  <h2>{{ ui.order_items }}</h2>
+  <table class="specs">
+    {% for item in order.items %}
+      <tr>
+        <th>{{ item.product_name }}</th>
+        <td>{{ item.price_minor }} {{ item.currency }} &times; {{ item.quantity }} = {{ item.line_total_minor }} {{ item.currency }}</td>
+      </tr>
+    {% endfor %}
+    <tr>
+      <th>{{ ui.order_total }}</th>
+      <td><strong>{{ order.total_minor }} {{ order.currency }}</strong></td>
+    </tr>
+  </table>
+
+  <p><a class="btn btn--gold" href="/catalog?lang={{ lang }}">{{ ui.order_back }}</a></p>
+{% endblock %}

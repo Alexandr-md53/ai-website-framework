@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.products }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <div class="list-head">
+    <h1>{{ ui.admin.products }}</h1>
+    <div class="list-actions">
+      <a class="btn btn--success" href="/admin/products/new">{{ ui.admin.add }}</a>
+    </div>
+  </div>
+  <p>
+    <a href="/admin/categories">{{ ui.admin.categories }}</a> ·
+    <a href="/admin/settings">{{ ui.admin.settings }}</a>
+  </p>
+
+  <form class="search-form" method="get" action="/admin/products">
+    <input type="text" name="q" value="{{ q }}" placeholder="{{ ui.admin.search_products }}">
+    <select name="category_id">
+      <option value="">{{ ui.admin.filter_all_categories }}</option>
+      {% for category in categories %}
+        <option value="{{ category.id }}" {% if selected_category_id == category.id|string %}selected{% endif %}>{{ category.text(lang).name }}</option>
+      {% endfor %}
+    </select>
+    <label class="muted"><input type="checkbox" name="incomplete" value="1" {% if incomplete %}checked{% endif %}> {{ ui.admin.filter_incomplete }}</label>
+    <button type="submit">{{ ui.admin.search_button }}</button>
+    {% if q or selected_category_id or incomplete %}<a class="muted" href="/admin/products">{{ ui.admin.search_reset }}</a>{% endif %}
+  </form>
+
+  <table>
+    <tr>
+      <th>{{ ui.admin.id }}</th><th>{{ ui.admin.slug }}</th><th>{{ ui.admin.name }}</th>
+      <th>{{ ui.admin.price }}</th><th>{{ ui.admin.category }}</th><th>{{ ui.admin.status }}</th><th>{{ ui.admin.col_translations }}</th><th></th>
+    </tr>
+    {% for product in products %}
+      {% set cells = translation_state[product.id] %}
+      <tr>
+        <td>{{ product.id }}</td>
+        <td>{{ product.slug or '—' }}</td>
+        <td>{{ product.text(lang).name }}</td>
+        <td>{{ product.price.format() }}</td>
+        <td>{% if product.category_id and product.category_id in categories_by_id %}{{ categories_by_id[product.category_id].text(lang).name }}{% else %}—{% endif %}</td>
+        <td><span class="badge {% if product.is_published %}live{% else %}draft{% endif %}">{% if product.is_published %}{{ ui.admin.badge_published }}{% else %}{{ ui.admin.badge_hidden }}{% endif %}</span></td>
+        <td class="tr-cell">
+          {% for cell in cells %}
+            {% set warn_attr = not cell.attributes_ok and not cell.attributes_na %}
+            <span class="tr-lang {% if cell.name_ok %}tr-ok{% else %}tr-missing{% endif %}" data-lang="{{ cell.code }}" title="{{ cell.code|upper }}: {% if cell.name_ok %}{{ ui.admin.tr_ok }}{% else %}{{ ui.admin.tr_missing }}{% endif %}">{{ cell.code|upper }}</span>{% if cell.warn %}<span class="tr-warn" data-lang="{{ cell.code }}" title="{% if not cell.description_ok %}{{ ui.admin.tr_warn_description }}{% endif %}{% if not cell.description_ok and warn_attr %} — {% endif %}{% if warn_attr %}{{ ui.admin.tr_warn_attributes }}{% endif %}"></span>{% endif %}
+          {% endfor %}
+        </td>
+        <td><a href="/admin/products/{{ product.id }}">{{ ui.admin.edit }}</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if not products %}<p class="muted">{{ ui.admin.products_empty }}</p>{% endif %}
+  <p class="muted tr-legend">{{ ui.admin.tr_legend }}</p>
+{% endblock %}

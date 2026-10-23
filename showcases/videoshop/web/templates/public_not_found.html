@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Not found — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.not_found_title }}</h1>
+  <p class="muted">{{ ui.not_found_text }}</p>
+  <p><a href="/catalog?lang={{ lang }}">{{ ui.back_to_catalog }}</a></p>
+{% endblock %}

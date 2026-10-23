@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% set v = values or {} %}
+{% block title %}{% if product %}{{ ui.admin.product_edit_title }} #{{ product.id }}{% else %}{{ ui.admin.product_new_title }}{% endif %} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{% if product %}{{ ui.admin.product_edit_title }} #{{ product.id }}{% else %}{{ ui.admin.product_new_title }}{% endif %}</h1>
+  {% if publish_warning %}
+    <p class="notice--warn">{{ ui.admin.publish_warning }} {{ publish_warning|map('upper')|join(', ') }}</p>
+  {% endif %}
+  <p><a href="/admin/products">{{ ui.admin.back_to_products }}</a>
+     {% if product and product.slug %} · <a href="/product/{{ product.slug }}" target="_blank">{{ ui.admin.view_on_site }}</a>{% endif %}</p>
+
+  <form class="stack" method="post" action="{% if product %}/admin/products/{{ product.id }}{% else %}/admin/products/new{% endif %}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="slug">{{ ui.admin.slug_label }}</label>
+    <input id="slug" name="slug" type="text" value="{{ v.get('slug', product.slug if product else '') }}" placeholder="demo-camera">
+    <p class="muted">{{ ui.admin.slug_hint }}</p>
+    <div class="row">
+      <div>
+        <label for="price">{{ ui.admin.price }}</label>
+        <input id="price" name="price" type="text" inputmode="decimal"
+               value="{{ v.get('price', (product.price.decimal|string) if product else '') }}" placeholder="1299.00" required>
+      </div>
+      <div>
+        <label for="currency">{{ ui.admin.currency }}</label>
+        <input id="currency" name="currency" type="text" maxlength="3"
+               value="{{ v.get('currency', product.price.currency if product else settings.default_currency) }}" required>
+      </div>
+      <div>
+        <label for="category_id">{{ ui.admin.category }}</label>
+        <select id="category_id" name="category_id">
+          <option value="">{{ ui.admin.none }}</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}" {% if v.get('category_id') == category.id|string or (not v and product and product.category_id == category.id) %}selected{% endif %}>{{ category.text(lang).name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    {% for code, title in languages %}
+      <fieldset>
+        <legend>{{ title }} ({{ code }})</legend>
+        <label for="name_{{ code }}">{{ ui.admin.name }}</label>
+        <input id="name_{{ code }}" name="name_{{ code }}" type="text"
+               value="{{ v.get('name_' ~ code, product.text(code).name if product else '') }}">
+        <label for="description_{{ code }}">{{ ui.admin.description }}</label>
+        <textarea id="description_{{ code }}" name="description_{{ code }}">{{ v.get('description_' ~ code, product.text(code).description if product else '') }}</textarea>
+      </fieldset>
+    {% endfor %}
+
+    <h2>{{ ui.admin.specs_title }}</h2>
+    <p class="muted">{{ ui.admin.attr_hint }}</p>
+    {% set neutral_count = (product.attribute_rows|selectattr(0, 'equalto', '')|list|length) if product else 0 %}
+    {% if neutral_count %}
+      <p class="muted">{{ ui.admin.attr_neutral }} {{ neutral_count }}</p>
+    {% endif %}
+    <style>
+      .attrs-table{width:100%;border-collapse:collapse;font-size:14px}
+      .attrs-table th,.attrs-table td{border:1px solid var(--line,#ddd);padding:6px;
+        vertical-align:top;text-align:left}
+      .attrs-table thead th{position:sticky;top:0;background:#fff;z-index:1}
+      .attrs-table__index{width:44px;text-align:center;color:#666;font-weight:400}
+      .attrs-table td input{display:block;width:100%;margin:0 0 4px;box-sizing:border-box}
+    </style>
+    <table class="attrs-table">
+      <thead>
+        <tr>
+          <th class="attrs-table__index">{{ ui.admin.attr_row }}</th>
+          {% for code, title in attribute_columns %}
+            <th>{{ title }} <span class="muted">({{ code }})</span></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in attribute_groups %}
+          <tr>
+            <th class="attrs-table__index">{{ group + 1 }}</th>
+            {% for code, title in attribute_columns %}
+              {% set index = group * (attribute_columns|length) + loop.index0 %}
+              {% set bucket = (product.attribute_rows|selectattr(0, 'equalto', code)|list) if product else [] %}
+              {% set row = bucket[group] if bucket|length > group else None %}
+              <td>
+                <input type="hidden" name="attribute_lang_{{ index }}" value="{{ code }}">
+                <input name="attribute_name_{{ index }}" type="text"
+                       placeholder="{{ ui.admin.attr_name }} {{ group + 1 }}"
+                       value="{{ v.get('attribute_name_' ~ index, row[1] if row else '') }}">
+                <input name="attribute_value_{{ index }}" type="text"
+                       placeholder="{{ ui.admin.attr_value }} {{ group + 1 }}"
+                       value="{{ v.get('attribute_value_' ~ index, row[2] if row else '') }}">
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <label><input type="checkbox" name="is_published" value="1"
+      {% if v.get('is_published') or (product and product.is_published) %}checked{% endif %}> {{ ui.admin.published }}</label>
+    <button type="submit">{% if product %}{{ ui.admin.save }}{% else %}{{ ui.admin.create_product }}{% endif %}</button>
+  </form>
+
+  {% if not product %}
+    <p class="hint">{{ ui.admin.images_after_save }}</p>
+  {% endif %}
+
+  {% if product %}
+    <form class="stack" method="post" action="/admin/products/{{ product.id }}/publish">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="published" value="{% if product.is_published %}0{% else %}1{% endif %}">
+      <button class="secondary" type="submit">{% if product.is_published %}{{ ui.admin.unpublish }}{% else %}{{ ui.admin.publish }}{% endif %}</button>
+    </form>
+
+    <h2>{{ ui.admin.images_title }}</h2>
+    <div class="thumbs">
+      {% for image in product.images %}
+        <figure>
+          {% set thumb = image.catalog_name or image.file_name %}
+          <img src="/media/{{ thumb }}" alt="{{ image.original_name }}">
+          <form method="post" action="/admin/products/{{ product.id }}/images/{{ image.id }}/delete">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button class="danger" type="submit">{{ ui.admin.delete_image }}</button>
+          </form>
+        </figure>
+      {% endfor %}
+    </div>
+    <form class="stack" id="upload-form">
+      <label for="image-file">{{ ui.admin.images_hint }}</label>
+      <input id="image-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+      <button type="submit">{{ ui.admin.upload }}</button>
+      <p class="muted" id="upload-status"></p>
+    </form>
+    <script>
+      document.getElementById('upload-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const input = document.getElementById('image-file');
+        const status = document.getElementById('upload-status');
+        if (!input.files.length) { status.textContent = '{{ ui.admin.choose_file }}'; return; }
+        const file = input.files[0];
+        // the original name travels in the query string: a browser cannot send
+        // non-ASCII header values, which used to break uploads of e.g. "фото.png"
+        const url = '/admin/products/{{ product.id }}/images?name=' + encodeURIComponent(file.name);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type || 'application/octet-stream',
+                     'X-CSRF-Token': '{{ csrf }}' },
+          body: file,
+        });
+        if (response.ok || response.redirected) { window.location = '/admin/products/{{ product.id }}'; }
+        else { status.textContent = '{{ ui.admin.upload_failed }}' + await response.text(); }
+      });
+    </script>
+
+    <form class="stack" method="post" action="/admin/products/{{ product.id }}/delete">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <h2>{{ ui.admin.delete_product_title }}</h2>
+      <p class="muted">{{ ui.admin.delete_product_hint }}</p>
+      <button class="danger" type="submit">{{ ui.admin.delete_product }}</button>
+    </form>
+  {% endif %}
+{% endblock %}
