@@ -320,6 +320,7 @@
     {% if settings.tagline %}<span class="tagline">{{ settings.tagline }}</span>{% endif %}
     <nav class="site-nav">
       {% if features.public_catalog %}<a href="/catalog?lang={{ lang }}">{{ ui.nav_catalog }}</a>{% endif %}
+      {% if features.public_catalog %}<a href="/consultant?lang={{ lang }}">{{ ui.nav_consultant }}</a>{% endif %}
       {% if is_admin %}<a href="/admin">{{ ui.nav_admin }}</a>{% endif %}
       {% if show_cart and features.cart %}
         <a class="cart" href="/catalog?lang={{ lang }}" title="{{ ui.cart_demo }}" aria-label="{{ ui.cart }}">

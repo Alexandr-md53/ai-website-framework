@@ -48,6 +48,11 @@
         <p class="muted">{{ ui.consultant.outcome_full }}</p>
       {% endif %}
 
+      {% if r.gaps %}
+        <p class="muted">{{ ui.consultant.gaps_label }}
+          {% set gaps = r.gaps %}{% set labels = ui.consultant.gaps %}{% include "_consultant_gaps.html" %}</p>
+      {% endif %}
+
       {% for group in r.groups %}
         <h3>{{ ui.consultant["cat_" ~ group.key] }}</h3>
         <div class="grid">
@@ -56,6 +61,14 @@
             {% include "_product_card.html" %}
           {% endfor %}
         </div>
+        {% for item in group.items %}
+          {% set shown = namespace(any=false) %}
+          {% for pair in item.matched %}{% if pair[1] %}{% set shown.any = true %}{% endif %}{% endfor %}
+          {% if shown.any %}
+            <p class="muted consultant__facts"><b>{{ item.product.text(lang).name }}</b> —
+              {% set facts = item.matched %}{% set labels = ui.consultant.attrs %}{% include "_consultant_facts.html" %}</p>
+          {% endif %}
+        {% endfor %}
       {% endfor %}
 
       {% if r.groups %}
@@ -77,6 +90,14 @@
               {% include "_product_card.html" %}
             {% endfor %}
           </div>
+          {% for item in group.items %}
+            {% set shown = namespace(any=false) %}
+            {% for pair in item.matched %}{% if pair[1] %}{% set shown.any = true %}{% endif %}{% endfor %}
+            {% if shown.any %}
+              <p class="muted consultant__facts"><b>{{ item.product.text(lang).name }}</b> —
+                {% set facts = item.matched %}{% set labels = ui.consultant.attrs %}{% include "_consultant_facts.html" %}</p>
+            {% endif %}
+          {% endfor %}
         {% endfor %}
       {% endif %}
 

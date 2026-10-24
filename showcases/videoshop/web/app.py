@@ -656,12 +656,7 @@ def create_app(
         )
         recommendation = None
         if scenario_id in SCENARIOS_BY_ID:
-            budget_minor = None
-            if budget_raw:
-                try:
-                    budget_minor = max(0, int(Decimal(budget_raw.replace(",", ".")) * 100))
-                except (InvalidOperation, ValueError):
-                    budget_minor = None
+            budget_minor = _parse_budget_minor(budget_raw)
             recommendation = recommend(
                 catalog.list_products(published_only=True),
                 SCENARIOS_BY_ID[scenario_id],
@@ -1541,6 +1536,33 @@ def _category_ids(categories: Any) -> Dict[str, int]:
         if live_slug in by_slug:
             resolved[key] = by_slug[live_slug]
     return resolved
+
+
+#: thousands separators accepted in the budget field: space, no-break,
+#: narrow no-break, thin and figure spaces
+_BUDGET_SPACES = (" ", "\u00a0", "\u202f", "\u2009", "\u2007")
+
+
+def _parse_budget_minor(raw: str) -> Optional[int]:
+    """Parse the budget field (major units) into minor units.
+
+    Thousands may be separated by spaces; a comma stays a decimal separator.
+    Values that are not a finite number are rejected (``None``) instead of being
+    silently read as a budget.
+    """
+    text = (raw or "").strip()
+    for space in _BUDGET_SPACES:
+        text = text.replace(space, "")
+    text = text.replace(",", ".")
+    if not text:
+        return None
+    try:
+        amount = Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+    if not amount.is_finite():
+        return None
+    return max(0, int(amount * 100))
 
 
 def _attribute_columns(settings: Any) -> List[Tuple[str, str]]:

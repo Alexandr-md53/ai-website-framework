@@ -1,0 +1,6 @@
+{%- set labels = labels | default({}) -%}
+{%- set ns = namespace(items=[]) -%}
+{%- for key in gaps -%}
+{%- set ns.items = ns.items + [labels.get(key, key)] -%}
+{%- endfor -%}
+{%- if ns.items -%}{{ ns.items | join(", ") }}{%- endif -%}

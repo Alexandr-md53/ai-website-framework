@@ -1,0 +1,7 @@
+{%- set labels = labels | default({}) -%}
+{%- set ns = namespace(items=[]) -%}
+{%- for attr, value in facts -%}
+{%- if value -%}{%- set label = labels.get(attr, attr) -%}
+{%- set ns.items = ns.items + [label ~ ": " ~ value] -%}{%- endif -%}
+{%- endfor -%}
+{%- if ns.items -%}{{ ns.items | join(" · ") }}{%- endif -%}
