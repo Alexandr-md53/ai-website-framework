@@ -7,17 +7,17 @@
 
 | Параметр | Значение | Источник |
 |---|---|---|
-| `HEAD` | `9630be8` | `git rev-parse HEAD` |
-| Ветка | `master` | `git branch` |
-| Последний коммит | `9630be8 feat(cafe): v0.6 public website slice …` | `git log -1` |
+| `HEAD` | **TOFILL** — после извлечения | `git rev-parse HEAD` |
+| Ветка | `main` | `git branch` |
+| Первый коммит | **TOFILL** — после извлечения | `git log --reverse -1` |
 | staged | 0 | `git diff --cached` |
-| modified (tracked) | 8 файлов — Café/framework: `.gitignore`, `AGENTS.md`, `START_HERE.md`, `docs/phases/phase-10.md`, `showcases/blog_cms/app_factory.py`, 3 файла Café | `git diff --stat` |
-| untracked | 49 записей, включая **весь `showcases/videoshop/`** и `data/` | `git status --short` |
-| `ai_framework/` | diff **пуст** | `git diff -- ai_framework/` |
-| Коммитов VideoShop | **нет** — PROVEN по `git log` | — |
+| working tree | чисто — репозиторий содержит только VideoShop | `git status --short` |
+| untracked | нет (`data/` исключён) | `git status --short` |
+| `ai_framework` | внешняя зависимость (пин по SHA), кода в дереве нет | — |
+| Коммитов VideoShop | 3 в исходном репозитории: `d42030e`, `c671187`, `7460edb` | `git log` |
 
-**Следствие:** всё, что сделано в VideoShop после `9630be8`, существует только в рабочем
-дереве. Ни один слой 1–4 не закоммичен.
+**История:** три коммита созданы локально в исходном репозитории и переносятся в новый
+репозиторий через `subtree split`. Push не выполнялся.
 
 ## Тесты
 
@@ -40,10 +40,8 @@
 
 ## Незавершённые изменения
 
-1. **Ничего не закоммичено.** `showcases/videoshop/` (111 файлов) — untracked.
-2. **Четыре файла памяти исключены `.gitignore`** (секция `# AI Work Memory`:
-   `CONTEXT.md`, `CHECKPOINT.md`, `PROJECT_STATE.md`, `GATES_LOG.md`). Решение владельца —
-   держать их в Git; **требуется убрать эти строки из `.gitignore`** (не выполнено, ждёт решения).
+1. **Отдельный репозиторий ещё не создан** — это следующий этап.
+2. Четыре файла памяти больше **не** исключены `.gitignore` (правка вошла в коммит `d42030e`).
 3. `launch_shop.py` (локальный запуск) — **намеренно** в `.gitignore`, не коммитить.
 4. `data/` (БД, бэкап, изображения) — untracked, **в Git не предлагается**.
 
@@ -71,8 +69,8 @@
 
 ## Важные нюансы
 
-- **НЕ трогать:** `ai_framework/`, Café, Nursery.
-- **Только `showcases/videoshop/`** — область изменений кода.
+- **НЕ трогать:** внешнюю зависимость `ai_framework` (FROZEN).
+- Область изменений — весь репозиторий (только VideoShop).
 - **Не коммитить** без разрешения.
 - Живая БД: `data/db/shop.sqlite`; верифицированный бэкап `data/db/shop.backup-20261022-215338.sqlite`
   (SHA-256 `F74BCAC7F59D25F22EFF95FFB4A47C82B20BE2CABA23C68BE660C1CD1E504167`).

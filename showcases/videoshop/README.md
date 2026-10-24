@@ -98,14 +98,14 @@ python -m pytest showcases/videoshop/tests
 - `ai_framework/` — **FROZEN**, не изменять.
 - **Café** — отдельный продукт, не трогать.
 - **Nursery** (`site_generation_post/`) — только чтение.
-- Изменения — **только** в `showcases/videoshop/`.
+- Репозиторий содержит **только** VideoShop; `ai_framework` подключается зависимостью.
 - **Не коммитить** без разрешения владельца.
 
 ## Документы проекта
 
 В корне репозитория:
 
-- [`CONTEXT.md`](../../CONTEXT.md) — шпаргалка для старта
-- [`CHECKPOINT.md`](../../CHECKPOINT.md) — текущее состояние и долги
-- [`PROJECT_STATE.md`](../../PROJECT_STATE.md) — архитектура и решения
-- [`GATES_LOG.md`](../../GATES_LOG.md) — краткая история этапов
+- [`docs/CONTEXT.md`](docs/CONTEXT.md) — шпаргалка для старта
+- [`docs/CHECKPOINT.md`](docs/CHECKPOINT.md) — текущее состояние и долги
+- [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) — архитектура и решения
+- [`docs/GATES_LOG.md`](docs/GATES_LOG.md) — краткая история этапов
