@@ -52,9 +52,9 @@ def test_migration_7_to_8_keeps_data_and_is_idempotent(tmp_path):
 
     run_transaction_with_retry(provider, _seed_v7)
 
-    assert migrate_catalog(provider) == CATALOG_VERSION == 8
+    assert migrate_catalog(provider) == CATALOG_VERSION
     with provider.read_transaction() as tx:
-        assert tx.scalar("PRAGMA user_version") == 8
+        assert tx.scalar("PRAGMA user_version") == CATALOG_VERSION
         names = {
             row["name"]
             for row in tx.fetchall("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -72,17 +72,17 @@ def test_migration_7_to_8_keeps_data_and_is_idempotent(tmp_path):
         assert tx.scalar("SELECT COUNT(*) FROM order_items") == 0
 
     # idempotent: a second run changes nothing and duplicates no rows
-    assert migrate_catalog(provider) == 8
+    assert migrate_catalog(provider) == CATALOG_VERSION
     with provider.read_transaction() as tx:
         assert tx.scalar("SELECT COUNT(*) FROM product_attributes") == 1
         assert tx.scalar("SELECT COUNT(*) FROM requests") == 1
         assert tx.scalar("SELECT COUNT(*) FROM carts") == 0
 
 
-def test_fresh_database_reaches_version_8(tmp_path):
+def test_fresh_database_reaches_version_9(tmp_path):
     db = tmp_path / "db"
     db.mkdir()
     provider = VideoShopSQLiteProvider(db_path=str(db / "shop.sqlite"))
-    assert migrate_catalog(provider) == 8
+    assert migrate_catalog(provider) == CATALOG_VERSION
     with provider.read_transaction() as tx:
-        assert tx.scalar("PRAGMA user_version") == 8
+        assert tx.scalar("PRAGMA user_version") == CATALOG_VERSION

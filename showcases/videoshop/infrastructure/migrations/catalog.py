@@ -22,11 +22,12 @@ from __future__ import annotations
 from typing import Any, Tuple
 
 from .runner import Migration, migrate
+from .publications import PUBLICATIONS_MIGRATIONS
 from .s3 import S3_MIGRATIONS
 
 #: version of the product-slice catalog schema
-#: (3 = catalog, 4 = info pages, 5 = category main photo, 6 = requests, 7 = attributes lang, 8 = cart/orders)
-CATALOG_VERSION = 8
+#: (3 = catalog, 4 = info pages, 5 = category main photo, 6 = requests, 7 = attributes lang, 8 = cart/orders, 9 = publications core)
+CATALOG_VERSION = 9
 
 CATALOG_DDL: Tuple[str, ...] = (
     "CREATE TABLE IF NOT EXISTS shop_settings ("
@@ -224,8 +225,8 @@ CATALOG_MIGRATIONS: Tuple[Migration, ...] = tuple(S3_MIGRATIONS) + (
     Migration(version=5, name="category_image", apply=_apply_catalog_image),
     Migration(version=6, name="requests_table", apply=_apply_requests),
     Migration(version=7, name="attributes_lang", apply=_apply_attributes_lang),
-    Migration(version=CATALOG_VERSION, name="carts_orders_tables", apply=_apply_cart_orders),
-)
+    Migration(version=8, name="carts_orders_tables", apply=_apply_cart_orders),
+) + PUBLICATIONS_MIGRATIONS
 
 
 def migrate_catalog(provider: Any) -> int:
