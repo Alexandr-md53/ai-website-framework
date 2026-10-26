@@ -292,6 +292,8 @@ def create_app(
             "languages": settings.languages,
             "lang": lang,
             "ui": get_ui(lang),
+            # the switcher keeps the page query and changes only ``lang``
+            "lang_url": lambda code: _language_switch_url(request, code),
             # published informational pages feed the footer navigation
             "pages": catalog.list_pages(published_only=True),
             # the admin link is rendered for a signed-in administrator only
@@ -1563,6 +1565,17 @@ def _parse_budget_minor(raw: str) -> Optional[int]:
     if not amount.is_finite():
         return None
     return max(0, int(amount * 100))
+
+
+def _language_switch_url(request: Request, code: str) -> str:
+    """Current page URL with only ``lang`` replaced by ``code``.
+
+    Every other query parameter is preserved, including repeated keys such as
+    ``have=a&have=b``. ``lang`` is replaced instead of being duplicated and is
+    added when the current URL carries none.
+    """
+    url = request.url.include_query_params(lang=code)
+    return f"{url.path}?{url.query}" if url.query else url.path
 
 
 def _attribute_columns(settings: Any) -> List[Tuple[str, str]]:
