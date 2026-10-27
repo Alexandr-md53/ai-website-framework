@@ -23,6 +23,7 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ..domain.catalog import (
     _effective_pairs,
@@ -35,6 +36,7 @@ from ..domain.catalog import (
     CategoryInUseError,
     CategoryText,
     DEFAULT_LANGUAGE,
+    DEFAULT_PUBLISH_TIMEZONE,
     DEFAULT_LANGUAGES,
     Money,
     NotFoundError,
@@ -81,6 +83,7 @@ SETTING_KEYS = (
     "social_telegram",
     "seo_title",
     "seo_description",
+    "publish_timezone",
 )
 
 #: settings validated as public http(s) links
@@ -237,6 +240,13 @@ class CatalogService:
             Money(minor=0, currency=currency)
         except ValidationError:
             currency = "MDL"
+        publish_timezone = (
+            values.get("publish_timezone") or DEFAULT_PUBLISH_TIMEZONE
+        ).strip()
+        try:
+            ZoneInfo(publish_timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            publish_timezone = DEFAULT_PUBLISH_TIMEZONE
         return ShopSettings(
             name=values.get("shop_name", ""),
             description=values.get("shop_description", ""),
@@ -253,6 +263,7 @@ class CatalogService:
             social_telegram=values.get("social_telegram", ""),
             seo_title=values.get("seo_title", ""),
             seo_description=values.get("seo_description", ""),
+            publish_timezone=publish_timezone,
         )
 
     def update_settings(self, values: Mapping[str, Any]) -> ShopSettings:
@@ -267,6 +278,18 @@ class CatalogService:
                     continue  # an empty field means "keep the current value"
                 Money(minor=0, currency=currency)  # validates the code
                 cleaned[key] = currency
+                continue
+            if key == "publish_timezone":
+                zone = str(raw).strip()
+                if not zone:
+                    continue
+                try:
+                    ZoneInfo(zone)
+                except (ZoneInfoNotFoundError, ValueError) as exc:
+                    raise ValidationError(
+                        f"publish_timezone must be a valid IANA timezone, got {zone!r}"
+                    ) from exc
+                cleaned[key] = zone
                 continue
             if key in SOCIAL_KEYS:
                 link = str(raw).strip()

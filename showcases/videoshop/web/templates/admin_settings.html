@@ -37,6 +37,10 @@
     <label for="default_currency">{{ ui.admin.default_currency_label }}</label>
     <input id="default_currency" name="default_currency" type="text" maxlength="3"
            value="{{ v.get('default_currency', settings.default_currency) }}">
+    <label for="publish_timezone">Publish timezone</label>
+    <input id="publish_timezone" name="publish_timezone" type="text"
+           value="{{ v.get('publish_timezone', settings.publish_timezone) }}">
+    <p class="muted">IANA timezone for publication scheduling (default Europe/Chisinau).</p>
 
     <h2>{{ ui.admin.contacts_social_title }}</h2>
     <label for="social_facebook">{{ ui.admin.facebook_url }}</label>

@@ -1195,6 +1195,7 @@ def create_app(
                     "contact_phone": form.get("contact_phone", ""),
                     "contact_address": form.get("contact_address", ""),
                     "default_currency": form.get("default_currency", ""),
+                    "publish_timezone": form.get("publish_timezone", ""),
                     "tagline": form.get("tagline", ""),
                     "social_facebook": form.get("social_facebook", ""),
                     "social_instagram": form.get("social_instagram", ""),

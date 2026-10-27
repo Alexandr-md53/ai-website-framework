@@ -16,13 +16,18 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 LANG_PATTERN = re.compile(r"^[a-z]{2}(?:-[a-z]{2})?$")
 CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
 MINOR_UNITS = 2
 PRICE_MAX_MINOR = 10**12
+
+#: IANA timezone used when an operator schedules a publication
+DEFAULT_PUBLISH_TIMEZONE = "Europe/Chisinau"
 
 DEFAULT_LANGUAGES: Tuple[Tuple[str, str], ...] = (
     ("ru", "Русский"),
@@ -434,7 +439,50 @@ class ShopSettings:
     #: site-wide SEO defaults, injected through the framework SeoInjector
     seo_title: str = ""
     seo_description: str = ""
+    #: IANA timezone for publication scheduling (shop setting)
+    publish_timezone: str = DEFAULT_PUBLISH_TIMEZONE
 
     @property
     def language_codes(self) -> Tuple[str, ...]:
         return tuple(code for code, _ in self.languages)
+
+
+def resolve_publish_moment(local_naive: datetime, tz_name: str) -> str:
+    """Convert a naive local moment in ``tz_name`` to an exact UTC ISO string.
+
+    DST policy (approved):
+    * a nonexistent local time (spring forward) is shifted FORWARD by the gap;
+    * an ambiguous local time (fall back) is refused - the operator must choose;
+    * a normal local time is converted without any shift.
+    """
+    name = str(tz_name or "").strip()
+    if not name:
+        raise ValidationError("publish_timezone is required")
+    try:
+        zone = ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValidationError(f"unknown timezone {name!r}") from exc
+
+    moment = local_naive.replace(tzinfo=None)
+    first = moment.replace(tzinfo=zone, fold=0)
+    second = moment.replace(tzinfo=zone, fold=1)
+    utc_first = first.astimezone(timezone.utc)
+    utc_second = second.astimezone(timezone.utc)
+    roundtrip_first = utc_first.astimezone(zone).replace(tzinfo=None)
+    roundtrip_second = utc_second.astimezone(zone).replace(tzinfo=None)
+
+    exists_first = roundtrip_first == moment
+    exists_second = roundtrip_second == moment
+
+    if exists_first and exists_second and utc_first != utc_second:
+        raise ValidationError(
+            f"ambiguous local time in {name!r}: it exists twice during the "
+            "DST fall back; choose an explicit option"
+        )
+    if not exists_first and not exists_second:
+        gap = second.utcoffset() - first.utcoffset()
+        if gap <= timedelta(0):
+            raise ValidationError(f"local time does not exist in {name!r}")
+        shifted = moment + gap
+        return shifted.replace(tzinfo=zone, fold=1).astimezone(timezone.utc).isoformat()
+    return utc_first.isoformat()
