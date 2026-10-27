@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.channels }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.channels }}</h1>
+  <p>
+    <a href="/admin/categories">{{ ui.admin.categories }}</a> ·
+    <a href="/admin/products">{{ ui.admin.products }}</a> ·
+    <a href="/admin/pages">{{ ui.admin.pages }}</a> ·
+    <a href="/admin/settings">{{ ui.admin.settings }}</a> ·
+    <a href="/admin/channels/new">{{ ui.admin.channel_new }}</a>
+  </p>
+  <table>
+    <tr>
+      <th>{{ ui.admin.id }}</th><th>{{ ui.admin.channel_key }}</th>
+      <th>{{ ui.admin.channel_name }}</th><th>platform</th>
+      <th>{{ ui.admin.channel_active }}</th><th></th>
+    </tr>
+    {% for channel in channels %}
+      <tr>
+        <td>{{ channel.id }}</td>
+        <td>{{ channel.channel_key }}</td>
+        <td>{{ channel.name }}</td>
+        <td>{{ channel.platform }}</td>
+        <td>{% if channel.is_active %}✓{% else %}—{% endif %}</td>
+        <td><a href="/admin/channels/{{ channel.id }}">{{ ui.admin.edit }}</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endblock %}

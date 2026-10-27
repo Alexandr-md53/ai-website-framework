@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% set v = values or {} %}
+{% set current_chat_id = channel_chat_id if channel_chat_id is defined else '' %}
+{% block title %}{{ ui.admin.channels }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{% if channel %}{{ ui.admin.channels }} #{{ channel.id }}{% else %}{{ ui.admin.channel_new }}{% endif %}</h1>
+  <p><a href="/admin/channels">{{ ui.admin.channels }}</a></p>
+
+  <form class="stack" method="post"
+        action="{% if channel %}/admin/channels/{{ channel.id }}{% else %}/admin/channels/new{% endif %}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="platform" value="telegram">
+
+    <label for="channel_key">{{ ui.admin.channel_key }}</label>
+    <input id="channel_key" name="channel_key" type="text" placeholder="main"
+           value="{{ v.get('channel_key', channel.channel_key if channel else '') }}">
+
+    <label for="name">{{ ui.admin.channel_name }}</label>
+    <input id="name" name="name" type="text"
+           value="{{ v.get('name', channel.name if channel else '') }}">
+
+    <label for="credentials_ref">{{ ui.admin.channel_credentials_ref }}</label>
+    <input id="credentials_ref" name="credentials_ref" type="text" placeholder="MAIN"
+           value="{{ v.get('credentials_ref', channel.credentials_ref if channel else '') }}">
+    <p class="muted">{{ ui.admin.channel_credentials_hint }}</p>
+
+    <label for="chat_id">{{ ui.admin.channel_chat_id }}</label>
+    <input id="chat_id" name="chat_id" type="text" placeholder="-1001234567890"
+           value="{{ v.get('chat_id', current_chat_id) }}">
+
+    <label for="timezone">{{ ui.admin.channel_timezone }}</label>
+    <input id="timezone" name="timezone" type="text"
+           value="{{ v.get('timezone', channel.timezone if channel else 'Europe/Chisinau') }}">
+
+    <label for="default_language">{{ ui.admin.channel_language }}</label>
+    <select id="default_language" name="default_language">
+      <option value=""></option>
+      {% for code, title in settings.languages %}
+        <option value="{{ code }}"
+          {% if v.get('default_language', channel.default_language if channel else '') == code %}selected{% endif %}>{{ title }} ({{ code }})</option>
+      {% endfor %}
+    </select>
+
+    <label><input type="checkbox" name="is_active" value="1"
+      {% if v.get('is_active') or (channel and channel.is_active) or (not channel and not v) %}checked{% endif %}> {{ ui.admin.channel_active }}</label>
+
+    <button type="submit">{{ ui.admin.channel_save }}</button>
+  </form>
+{% endblock %}

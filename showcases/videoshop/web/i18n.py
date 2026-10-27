@@ -204,6 +204,18 @@ UI: Dict[str, Dict] = {
         "footer_rights": "Все права защищены.",
         # --- admin panel -------------------------------------------------
         "admin": {
+            "channels": "Каналы публикаций",
+            "channel_new": "Новый канал",
+            "channel_save": "Сохранить канал",
+            "channel_key": "Ключ канала",
+            "channel_name": "Название канала",
+            "channel_credentials_ref": "Ссылка на credentials (без токена)",
+            "channel_chat_id": "chat_id (строка)",
+            "channel_timezone": "Часовой пояс",
+            "channel_language": "Язык по умолчанию",
+            "channel_active": "Активен",
+            "channel_credentials_hint": "Токен бота задаётся переменной окружения; в интерфейсе он не вводится и не показывается.",
+
             "dashboard": "Панель",
             "categories": "Категории",
             "products": "Товары",
@@ -562,6 +574,18 @@ UI: Dict[str, Dict] = {
         "footer_rights": "Toate drepturile rezervate.",
         # --- admin panel -------------------------------------------------
         "admin": {
+            "channels": "Canale de publicare",
+            "channel_new": "Canal nou",
+            "channel_save": "Salvează canalul",
+            "channel_key": "Cheia canalului",
+            "channel_name": "Numele canalului",
+            "channel_credentials_ref": "Referință credentials (fără token)",
+            "channel_chat_id": "chat_id (șir)",
+            "channel_timezone": "Fus orar",
+            "channel_language": "Limba implicită",
+            "channel_active": "Activ",
+            "channel_credentials_hint": "Tokenul botului se setează prin variabilă de mediu; nu se introduce în interfață.",
+
             "dashboard": "Panou",
             "categories": "Categorii",
             "products": "Produse",
@@ -910,6 +934,18 @@ UI: Dict[str, Dict] = {
         "footer_rights": "All rights reserved.",
         # --- admin panel -------------------------------------------------
         "admin": {
+            "channels": "Publication channels",
+            "channel_new": "New channel",
+            "channel_save": "Save channel",
+            "channel_key": "Channel key",
+            "channel_name": "Channel name",
+            "channel_credentials_ref": "Credentials reference (no token)",
+            "channel_chat_id": "chat_id (string)",
+            "channel_timezone": "Timezone",
+            "channel_language": "Default language",
+            "channel_active": "Active",
+            "channel_credentials_hint": "The bot token is configured through an environment variable; it is never entered or shown here.",
+
             "dashboard": "Dashboard",
             "categories": "Categories",
             "products": "Products",

@@ -24,11 +24,13 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import re
 from decimal import Decimal, InvalidOperation
 import secrets
+import sqlite3
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -93,6 +95,7 @@ from ..services.orders import (
     OrderValidationError,
 )
 from ..services.catalog import CatalogService, slugify
+from ..services.publications import PublicationsService
 from .i18n import admin_language_choices, get_admin_ui, get_ui
 from .config import StoreConfig, StoreConfigError, default_store_config
 from ..infrastructure.storage import StoragePathMissing
@@ -1329,6 +1332,143 @@ def create_app(
 
     # --- admin: requests (block 3a) ------------------------------------
 
+    # --- admin: publication channels (S5.2) ----------------------------
+
+    def _publications_service() -> PublicationsService:
+        return PublicationsService(provider)
+
+    def _channel_chat_id(settings_json: str) -> str:
+        try:
+            settings = json.loads(settings_json or "{}")
+        except ValueError:
+            return ""
+        if not isinstance(settings, dict):
+            return ""
+        value = settings.get("chat_id")
+        return value if isinstance(value, str) else ""
+
+    def _channel_settings_json(current: str, chat_id: str) -> str:
+        try:
+            settings = json.loads(current or "{}")
+        except ValueError as exc:
+            raise ValidationError("settings_json invalid") from exc
+        if not isinstance(settings, dict):
+            raise ValidationError("settings_json invalid")
+        updated = dict(settings)
+        updated["chat_id"] = chat_id
+        return json.dumps(updated, ensure_ascii=False)
+
+    def _channel_values(form: Mapping[str, Any]) -> Dict[str, str]:
+        return {
+            "channel_key": (form.get("channel_key") or "").strip(),
+            "name": (form.get("name") or "").strip(),
+            "credentials_ref": (form.get("credentials_ref") or "").strip(),
+            "chat_id": (form.get("chat_id") or "").strip(),
+            "timezone": (form.get("timezone") or "").strip() or "Europe/Chisinau",
+            "default_language": (form.get("default_language") or "").strip(),
+        }
+
+    def _channel_error(request: Request, message: str, form: Mapping[str, Any], channel=None):
+        context = admin_context(request, error=message, values=form)
+        context["channel"] = channel
+        context["channel_chat_id"] = (
+            _channel_chat_id(channel.settings_json) if channel is not None else ""
+        )
+        return render("admin_channel_form.html", context, status_code=400)
+
+    @app.get("/admin/channels", response_class=HTMLResponse)
+    async def admin_channels(request: Request) -> HTMLResponse:
+        _publications_guard()
+        admin_or_refuse(request, page=True)
+        context = admin_context(request)
+        context["channels"] = _publications_service().list_channels()
+        return render("admin_channels.html", context)
+
+    @app.get("/admin/channels/new", response_class=HTMLResponse)
+    async def admin_channel_new(request: Request) -> HTMLResponse:
+        _publications_guard()
+        admin_or_refuse(request, page=True)
+        context = admin_context(request)
+        context["channel"] = None
+        context["channel_chat_id"] = ""
+        return render("admin_channel_form.html", context)
+
+    @app.post("/admin/channels/new")
+    async def admin_channel_create(request: Request):
+        _publications_guard()
+        _, _, form = await admin_form(request)
+        values = _channel_values(form)
+        if not values["chat_id"]:
+            return _channel_error(request, "chat_id is required", form)
+        try:
+            settings_json = _channel_settings_json("{}", values["chat_id"])
+            _publications_service().create_channel(
+                platform="telegram",
+                channel_key=values["channel_key"],
+                name=values["name"],
+                credentials_ref=values["credentials_ref"],
+                settings_json=settings_json,
+                default_language=values["default_language"],
+                timezone=values["timezone"],
+                is_active=bool(form.get("is_active")),
+            )
+        except sqlite3.IntegrityError:
+            return _channel_error(
+                request, "channel_key or name already used for this platform", form
+            )
+        except (ValidationError, CatalogError) as exc:
+            return _channel_error(request, str(exc), form)
+        return RedirectResponse(url="/admin/channels", status_code=303)
+
+    @app.get("/admin/channels/{channel_id}", response_class=HTMLResponse)
+    async def admin_channel_edit(request: Request, channel_id: int) -> HTMLResponse:
+        _publications_guard()
+        admin_or_refuse(request, page=True)
+        try:
+            channel = _publications_service().get_channel(channel_id)
+        except NotFoundError:
+            raise HTTPException(status_code=404, detail="not found")
+        context = admin_context(request)
+        context["channel"] = channel
+        context["channel_chat_id"] = _channel_chat_id(channel.settings_json)
+        return render("admin_channel_form.html", context)
+
+    @app.post("/admin/channels/{channel_id}")
+    async def admin_channel_update(request: Request, channel_id: int):
+        _publications_guard()
+        _, _, form = await admin_form(request)
+        try:
+            channel = _publications_service().get_channel(channel_id)
+        except NotFoundError:
+            raise HTTPException(status_code=404, detail="not found")
+        values = _channel_values(form)
+        if not values["chat_id"]:
+            return _channel_error(request, "chat_id is required", form, channel)
+        try:
+            settings_json = _channel_settings_json(
+                channel.settings_json, values["chat_id"]
+            )
+            _publications_service().update_channel(
+                channel_id,
+                channel_key=values["channel_key"],
+                name=values["name"],
+                credentials_ref=values["credentials_ref"],
+                settings_json=settings_json,
+                default_language=values["default_language"],
+                timezone=values["timezone"],
+                is_active=bool(form.get("is_active")),
+            )
+        except sqlite3.IntegrityError:
+            return _channel_error(
+                request,
+                "channel_key or name already used for this platform",
+                form,
+                channel,
+            )
+        except (ValidationError, CatalogError) as exc:
+            return _channel_error(request, str(exc), form, channel)
+        return RedirectResponse(url="/admin/channels", status_code=303)
+
     @app.get("/admin/requests", response_class=HTMLResponse)
     async def admin_requests(request: Request) -> HTMLResponse:
         admin_or_refuse(request, page=True)
@@ -1361,6 +1501,10 @@ def create_app(
 
     def _admin_orders_guard() -> None:
         if not features["cart"]:
+            raise HTTPException(status_code=404, detail="not found")
+
+    def _publications_guard() -> None:
+        if (source.get("VIDEOSHOP_PUBLICATIONS", "off") or "").strip().lower() != "on":
             raise HTTPException(status_code=404, detail="not found")
 
     @app.get("/admin/orders", response_class=HTMLResponse)
