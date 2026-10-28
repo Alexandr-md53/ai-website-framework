@@ -24,7 +24,7 @@ showcases/videoshop/
 ├── services/        # CRUD, настройки, страницы, корзина, заказы
 ├── security/        # PBKDF2 + cookie + CSRF (без пароля в коде)
 ├── web/             # FastAPI + Jinja-шаблоны + i18n RU/RO/EN
-└── tests/           # 26 модулей, 324 теста
+└── tests/           # 40 модулей, 498 тестов (собрано на 2026-10-28)
 ```
 
 ### Стек
@@ -63,7 +63,7 @@ entity lifecycle, reliability (retry BUSY, scopes), backup + restore drill.
 | **Layer 4 — консультант** | `/consultant`, 4 сценария, детерминированные правила | → 316 | IMPLEMENTED |
 | Layer 4 fixes | `CATEGORY_ALIASES`, `lang` в форме | 319 → **324** | IMPLEMENTED |
 
-**Текущий базис: 324/324, 0 failed/errors/skipped** (прогон 2026-10-23 21:28, Worker #2).
+**Текущий набор: 498 тестов (собрано) в `showcases/videoshop/tests`; полный прогон не выполнялся** (состояние на HEAD 0e8b0a4, 2026-10-28).
 
 ## Решения Layer 4 (консультант)
 
@@ -123,10 +123,10 @@ multipart, AI/Telegram/квизы.
 `669` (`START_HERE.md`, `AGENTS.md`) — baseline **framework**; `578` (`docs/README.md`) —
 снимок документации Phase 16.5; `184` (`GATES_LOG.md`) — гейт VideoShop 2026-10-15.
 Это **разные срезы разных подсистем**, а не противоречие и не текущее состояние.
-Текущее состояние VideoShop — **324** (PROVEN).
+Текущее состояние VideoShop — **498 тестов (собрано)** на HEAD 0e8b0a4 (2026-10-28); полный прогон — UNKNOWN.
 
 ---
-Обновлено: 2026-10-23
+Обновлено: 2026-10-28
 
 
 ## Known limitations S5 — publications (2026-10-28)
