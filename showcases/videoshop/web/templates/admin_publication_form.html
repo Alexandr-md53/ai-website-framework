@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set v = values or {} %}
+{% block title %}{{ ui.admin.publication_new }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.publication_new }}</h1>
+  <p><a href="/admin/publications">{{ ui.admin.publications }}</a></p>
+
+  <form class="stack" method="post" action="/admin/publications/new">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+
+    {% for code, title in settings.languages %}
+      <fieldset>
+        <legend>{{ title }} ({{ code }})</legend>
+        <label for="title_{{ code }}">{{ ui.admin.title }}</label>
+        <input id="title_{{ code }}" name="title_{{ code }}" type="text"
+               value="{{ v.get('title_' ~ code, '') }}">
+        <label for="body_{{ code }}">{{ ui.admin.text }}</label>
+        <textarea id="body_{{ code }}" name="body_{{ code }}" rows="6">{{ v.get('body_' ~ code, '') }}</textarea>
+      </fieldset>
+    {% endfor %}
+
+    <fieldset>
+      <legend>{{ ui.admin.publication_channels }}</legend>
+      {% for channel in channels %}
+        <label><input type="checkbox" name="channel_{{ channel.id }}" value="1"
+          {% if v.get('channel_' ~ channel.id) %}checked{% endif %}> {{ channel.name }} ({{ channel.channel_key }})</label>
+      {% endfor %}
+    </fieldset>
+
+    <label for="scheduled_local">{{ ui.admin.publication_schedule }}</label>
+    <input id="scheduled_local" name="scheduled_local" type="datetime-local"
+           value="{{ v.get('scheduled_local', '') }}">
+    <p class="muted">{{ ui.admin.publication_timezone_hint }}: {{ settings.publish_timezone }}</p>
+    <p class="muted">{{ ui.admin.publication_dst_hint }}</p>
+
+    <button type="submit">{{ ui.admin.publication_save }}</button>
+  </form>
+{% endblock %}

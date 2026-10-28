@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import secrets
 import sqlite3
@@ -35,6 +36,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from urllib.parse import parse_qs
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -52,6 +54,7 @@ from ..domain.catalog import (
     NotFoundError,
     fill_attribute_translations,
     ValidationError,
+    resolve_publish_moment,
 )
 from ..domain.consultant import recommend
 from ..domain.scenarios import (
@@ -96,6 +99,7 @@ from ..services.orders import (
 )
 from ..services.catalog import CatalogService, slugify
 from ..services.publications import PublicationsService
+from ..publishers.telegram_formatter import TEXT_LIMIT, escape_html
 from .i18n import admin_language_choices, get_admin_ui, get_ui
 from .config import StoreConfig, StoreConfigError, default_store_config
 from ..infrastructure.storage import StoragePathMissing
@@ -1468,6 +1472,166 @@ def create_app(
         except (ValidationError, CatalogError) as exc:
             return _channel_error(request, str(exc), form, channel)
         return RedirectResponse(url="/admin/channels", status_code=303)
+
+    # --- admin: publications (S5.3) -------------------------------------
+
+    def _publication_rows(
+        service: PublicationsService, settings
+    ) -> List[Dict[str, Any]]:
+        zone = ZoneInfo(settings.publish_timezone)
+        by_publication: Dict[int, List[Any]] = {}
+        for job in service.list_jobs(limit=100):
+            by_publication.setdefault(job.publication_id, []).append(job)
+        rows: List[Dict[str, Any]] = []
+        for publication_id, jobs in by_publication.items():
+            try:
+                publication = service.get_publication(publication_id)
+            except NotFoundError:
+                continue
+            nearest = min(job.scheduled_for for job in jobs)
+            rows.append(
+                {
+                    "publication": publication,
+                    "texts": service.get_texts(publication_id),
+                    "jobs": jobs,
+                    "statuses": sorted({job.status for job in jobs}),
+                    "nearest_utc": nearest,
+                    "nearest_local": datetime.fromisoformat(nearest)
+                    .astimezone(zone)
+                    .isoformat(),
+                }
+            )
+        rows.sort(key=lambda row: row["publication"].id, reverse=True)
+        return rows
+
+    def _publication_form_data(form: Mapping[str, Any], settings, channels):
+        texts: Dict[str, tuple] = {}
+        for code in settings.language_codes:
+            title = (form.get(f"title_{code}") or "").strip()
+            body = (form.get(f"body_{code}") or "").strip()
+            if title or body:
+                texts[code] = (title, body)
+        selected_channels = [
+            channel.id for channel in channels if form.get(f"channel_{channel.id}")
+        ]
+        return texts, selected_channels
+
+    def _publication_validate(texts, settings) -> str:
+        if not texts:
+            return "at least one language text is required"
+        for code in settings.language_codes:
+            if code not in texts:
+                return f"text for language {code!r} is required"
+            title, body = texts[code]
+            if not title:
+                return f"title for language {code!r} is required"
+            content = body or title
+            if len(escape_html(content)) > TEXT_LIMIT:
+                return (
+                    f"text for language {code!r} exceeds the Telegram limit "
+                    "(escaped length)"
+                )
+        return ""
+
+    def _publication_channels(service) -> List[Any]:
+        return [
+            channel
+            for channel in service.list_channels(active_only=True)
+            if channel.platform == "telegram"
+        ]
+
+    @app.get("/admin/publications", response_class=HTMLResponse)
+    async def admin_publications(request: Request) -> HTMLResponse:
+        _publications_guard()
+        admin_or_refuse(request, page=True)
+        context = admin_context(request)
+        context["publications"] = _publication_rows(
+            _publications_service(), context["settings"]
+        )
+        context["shifted"] = request.query_params.get("shifted") == "1"
+        return render("admin_publications.html", context)
+
+    @app.get("/admin/publications/new", response_class=HTMLResponse)
+    async def admin_publication_new(request: Request) -> HTMLResponse:
+        _publications_guard()
+        admin_or_refuse(request, page=True)
+        context = admin_context(request)
+        context["channels"] = _publication_channels(_publications_service())
+        return render("admin_publication_form.html", context)
+
+    @app.post("/admin/publications/new")
+    async def admin_publication_create(request: Request):
+        _publications_guard()
+        _, user, form = await admin_form(request)
+        settings = catalog.get_settings()
+        service = _publications_service()
+        channels = _publication_channels(service)
+        texts, selected_channels = _publication_form_data(form, settings, channels)
+        error = _publication_validate(texts, settings)
+        scheduled_local = (form.get("scheduled_local") or "").strip()
+        utc_iso = ""
+        shifted = False
+        if not error:
+            try:
+                local_moment = datetime.fromisoformat(scheduled_local)
+            except ValueError:
+                error = "scheduled time is invalid"
+            else:
+                try:
+                    utc_iso = resolve_publish_moment(
+                        local_moment.replace(tzinfo=None),
+                        settings.publish_timezone,
+                    )
+                    shifted = (
+                        datetime.fromisoformat(utc_iso)
+                        .astimezone(ZoneInfo(settings.publish_timezone))
+                        .replace(tzinfo=None)
+                        != local_moment.replace(tzinfo=None)
+                    )
+                except ValidationError as exc:
+                    error = str(exc)
+        if not error and not selected_channels:
+            error = "at least one active telegram channel is required"
+        if error:
+            context = admin_context(request, error=error, values=form)
+            context["channels"] = channels
+            return render("admin_publication_form.html", context, status_code=400)
+
+        try:
+            publication = service.create_publication(
+                texts=texts, created_by=str(user or "")
+            )
+        except (ValidationError, CatalogError) as exc:
+            context = admin_context(request, error=str(exc), values=form)
+            context["channels"] = channels
+            return render("admin_publication_form.html", context, status_code=400)
+
+        try:
+            service.schedule_jobs(
+                publication.id,
+                channel_ids=selected_channels,
+                langs=list(texts),
+                scheduled_for=utc_iso,
+            )
+        except sqlite3.IntegrityError:
+            context = admin_context(
+                request, error="jobs for these parameters already exist", values=form
+            )
+            context["channels"] = channels
+            return render("admin_publication_form.html", context, status_code=400)
+        except Exception as exc:  # noqa: BLE001 - report, never retry automatically
+            context = admin_context(
+                request,
+                error=(
+                    f"publication created (id={publication.id}), jobs NOT scheduled: "
+                    f"{type(exc).__name__}"
+                ),
+                values=form,
+            )
+            context["channels"] = channels
+            return render("admin_publication_form.html", context, status_code=400)
+        target = "/admin/publications" + ("?shifted=1" if shifted else "")
+        return RedirectResponse(url=target, status_code=303)
 
     @app.get("/admin/requests", response_class=HTMLResponse)
     async def admin_requests(request: Request) -> HTMLResponse:

@@ -204,6 +204,19 @@ UI: Dict[str, Dict] = {
         "footer_rights": "Все права защищены.",
         # --- admin panel -------------------------------------------------
         "admin": {
+            "publications": "Публикации",
+            "publication_new": "Новая публикация",
+            "publication_save": "Создать публикацию",
+            "publication_texts": "Языки",
+            "publication_channels": "Каналы",
+            "publication_schedule": "Время публикации",
+            "publication_status": "Статус",
+            "publication_jobs": "Задания",
+            "publication_empty": "Публикаций пока нет",
+            "publication_timezone_hint": "Время вводится в часовом поясе магазина",
+            "publication_dst_hint": "При переходе на летнее время несуществующее время сдвигается вперёд; неоднозначное время отклоняется.",
+            "publication_partial_warning": "Публикация создана, но задания могли не создаться.",
+
             "channels": "Каналы публикаций",
             "channel_new": "Новый канал",
             "channel_save": "Сохранить канал",
@@ -574,6 +587,19 @@ UI: Dict[str, Dict] = {
         "footer_rights": "Toate drepturile rezervate.",
         # --- admin panel -------------------------------------------------
         "admin": {
+            "publications": "Publicații",
+            "publication_new": "Publicație nouă",
+            "publication_save": "Creează publicația",
+            "publication_texts": "Limbi",
+            "publication_channels": "Canale",
+            "publication_schedule": "Ora publicării",
+            "publication_status": "Statut",
+            "publication_jobs": "Sarcini",
+            "publication_empty": "Nu există publicații",
+            "publication_timezone_hint": "Ora se introduce în fusul orar al magazinului",
+            "publication_dst_hint": "La trecerea la ora de vară, ora inexistentă este deplasată înainte; ora ambiguă este respinsă.",
+            "publication_partial_warning": "Publicația a fost creată, dar sarcinile pot să nu fi fost create.",
+
             "channels": "Canale de publicare",
             "channel_new": "Canal nou",
             "channel_save": "Salvează canalul",
@@ -934,6 +960,19 @@ UI: Dict[str, Dict] = {
         "footer_rights": "All rights reserved.",
         # --- admin panel -------------------------------------------------
         "admin": {
+            "publications": "Publications",
+            "publication_new": "New publication",
+            "publication_save": "Create publication",
+            "publication_texts": "Languages",
+            "publication_channels": "Channels",
+            "publication_schedule": "Publication time",
+            "publication_status": "Status",
+            "publication_jobs": "Jobs",
+            "publication_empty": "No publications yet",
+            "publication_timezone_hint": "The time is entered in the shop timezone",
+            "publication_dst_hint": "On spring forward, a nonexistent time is shifted forward; an ambiguous time is rejected.",
+            "publication_partial_warning": "The publication was created but jobs may not have been scheduled.",
+
             "channels": "Publication channels",
             "channel_new": "New channel",
             "channel_save": "Save channel",

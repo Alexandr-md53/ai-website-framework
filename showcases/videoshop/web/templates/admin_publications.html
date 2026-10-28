@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.publications }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.publications }}</h1>
+  {% if shifted %}<p class="muted">{{ ui.admin.publication_dst_hint }}</p>{% endif %}
+  <p>
+    <a href="/admin/channels">{{ ui.admin.channels }}</a> ·
+    <a href="/admin/settings">{{ ui.admin.settings }}</a> ·
+    <a href="/admin/publications/new">{{ ui.admin.publication_new }}</a>
+  </p>
+  <table>
+    <tr>
+      <th>{{ ui.admin.id }}</th><th>{{ ui.admin.publication_status }}</th>
+      <th>{{ ui.admin.publication_texts }}</th><th>{{ ui.admin.publication_jobs }}</th>
+      <th>{{ ui.admin.publication_schedule }}</th>
+    </tr>
+    {% for row in publications %}
+      <tr>
+        <td>{{ row.publication.id }}</td>
+        <td>{{ row.publication.status }}</td>
+        <td>{% for code in row.texts %}{{ code }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+        <td>{{ row.jobs|length }} ({{ row.statuses|join(', ') }})</td>
+        <td>{{ row.nearest_local }}<br><span class="muted">{{ row.nearest_utc }}</span></td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if not publications %}<p class="muted">{{ ui.admin.publication_empty }}</p>{% endif %}
+{% endblock %}
