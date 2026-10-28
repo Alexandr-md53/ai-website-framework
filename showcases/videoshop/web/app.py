@@ -1633,6 +1633,178 @@ def create_app(
         target = "/admin/publications" + ("?shifted=1" if shifted else "")
         return RedirectResponse(url=target, status_code=303)
 
+    # --- admin: publication jobs (S5.4) --------------------------------
+
+    def _job_rows(service, publication_id: int, settings) -> List[Dict[str, Any]]:
+        zone = ZoneInfo(settings.publish_timezone)
+        channels = {channel.id: channel for channel in service.list_channels()}
+        rows: List[Dict[str, Any]] = []
+        for job in service.list_jobs(publication_id=publication_id, limit=100):
+            rows.append(
+                {
+                    "job": job,
+                    "channel": channels.get(job.channel_id),
+                    "events": service.list_events(job.id),
+                    "local": datetime.fromisoformat(job.scheduled_for)
+                    .astimezone(zone)
+                    .isoformat(),
+                }
+            )
+        return rows
+
+    def _jobs_page(
+        request: Request,
+        service: PublicationsService,
+        publication_id: int,
+        *,
+        error: str = "",
+        values: Mapping[str, Any] = None,
+        status_code: int = 200,
+    ):
+        try:
+            publication = service.get_publication(publication_id)
+        except NotFoundError:
+            raise HTTPException(status_code=404, detail="not found")
+        context = admin_context(request, error=error, values=values)
+        context["publication"] = publication
+        context["texts"] = service.get_texts(publication_id)
+        context["rows"] = _job_rows(service, publication_id, context["settings"])
+        context["resolved"] = request.query_params.get("resolved") or ""
+        context["created"] = request.query_params.get("created") or ""
+        context["kept"] = request.query_params.get("kept") == "1"
+        return render("admin_publication_jobs.html", context, status_code=status_code)
+
+    @app.get("/admin/publications/{publication_id}/jobs", response_class=HTMLResponse)
+    async def admin_publication_jobs(request: Request, publication_id: int) -> HTMLResponse:
+        _publications_guard()
+        admin_or_refuse(request, page=True)
+        return _jobs_page(request, _publications_service(), publication_id)
+
+    @app.post("/admin/jobs/{job_id}/resolve")
+    async def admin_job_resolve(request: Request, job_id: int):
+        _publications_guard()
+        _, _, form = await admin_form(request)
+        service = _publications_service()
+        try:
+            publication_id = int(form.get("publication_id") or "")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="publication_id is required")
+        outcome = (form.get("outcome") or "").strip()
+        note = (form.get("note") or "").strip()
+        if outcome == "sent":
+            external_id = (form.get("external_id") or "").strip()
+            if not external_id:
+                return _jobs_page(
+                    request,
+                    service,
+                    publication_id,
+                    error="external_id is required",
+                    values=form,
+                    status_code=400,
+                )
+        elif outcome == "failed":
+            if form.get("confirmed_not_sent") != "1":
+                return _jobs_page(
+                    request,
+                    service,
+                    publication_id,
+                    error="confirmation required (not sent)",
+                    values=form,
+                    status_code=400,
+                )
+        else:
+            return _jobs_page(
+                request,
+                service,
+                publication_id,
+                error="unknown outcome",
+                values=form,
+                status_code=400,
+            )
+        try:
+            if outcome == "sent":
+                job = service.resolve_uncertain(
+                    job_id, outcome="sent", external_id=external_id, note=note
+                )
+            else:
+                job = service.resolve_uncertain(
+                    job_id, outcome="failed", external_id=None, note=note
+                )
+        except NotFoundError:
+            raise HTTPException(status_code=404, detail="not found")
+        except ValidationError as exc:
+            return _jobs_page(
+                request, service, publication_id, error=str(exc), values=form, status_code=400
+            )
+        target = (
+            f"/admin/publications/{job.publication_id}/jobs?resolved={outcome}"
+        )
+        return RedirectResponse(url=target, status_code=303)
+
+    @app.post("/admin/jobs/{job_id}/retry-as-new")
+    async def admin_job_retry_as_new(request: Request, job_id: int):
+        _publications_guard()
+        _, _, form = await admin_form(request)
+        service = _publications_service()
+        settings = catalog.get_settings()
+        try:
+            publication_id = int(form.get("publication_id") or "")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="publication_id is required")
+        target_job = None
+        for candidate in service.list_jobs(publication_id=publication_id, limit=1000):
+            if candidate.id == job_id:
+                target_job = candidate
+                break
+        if target_job is None:
+            raise HTTPException(status_code=404, detail="not found")
+        if target_job.status != "failed":
+            return _jobs_page(
+                request,
+                service,
+                publication_id,
+                error="retry is allowed only for failed jobs",
+                values=form,
+                status_code=400,
+            )
+        scheduled_local = (form.get("scheduled_local") or "").strip()
+        utc_iso = None
+        if scheduled_local:
+            try:
+                local_moment = datetime.fromisoformat(scheduled_local)
+            except ValueError:
+                return _jobs_page(
+                    request,
+                    service,
+                    publication_id,
+                    error="scheduled time is invalid",
+                    values=form,
+                    status_code=400,
+                )
+            try:
+                utc_iso = resolve_publish_moment(
+                    local_moment.replace(tzinfo=None), settings.publish_timezone
+                )
+            except ValidationError as exc:
+                return _jobs_page(
+                    request,
+                    service,
+                    publication_id,
+                    error=str(exc),
+                    values=form,
+                    status_code=400,
+                )
+        try:
+            new_job = service.retry_as_new(job_id, scheduled_for=utc_iso)
+        except NotFoundError:
+            raise HTTPException(status_code=404, detail="not found")
+        except ValidationError as exc:
+            return _jobs_page(
+                request, service, publication_id, error=str(exc), values=form, status_code=400
+            )
+        target = f"/admin/publications/{new_job.publication_id}/jobs?created={new_job.id}"
+        return RedirectResponse(url=target, status_code=303)
+
     @app.get("/admin/requests", response_class=HTMLResponse)
     async def admin_requests(request: Request) -> HTMLResponse:
         admin_or_refuse(request, page=True)

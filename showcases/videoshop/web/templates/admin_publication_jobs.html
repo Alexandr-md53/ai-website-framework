@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ ui.admin.publication_jobs_title }} — {{ settings.name or 'VideoShop' }}{% endblock %}
+{% block content %}
+  <h1>{{ ui.admin.publication_jobs_title }} #{{ publication.id }}</h1>
+  <p><a href="/admin/publications">{{ ui.admin.publication_jobs_back }}</a></p>
+  {% if resolved %}<p class="muted">{{ ui.admin.job_already_resolved }}: {{ resolved }}</p>{% endif %}
+  {% if created %}<p class="muted">{{ ui.admin.job_new_created }} #{{ created }}</p>{% endif %}
+  {% if kept %}<p class="muted">{{ ui.admin.job_leave_unknown }}</p>{% endif %}
+
+  {% for row in rows %}
+    <section class="stack">
+      <h2>#{{ row.job.id }} — {{ row.job.status }}</h2>
+      <p class="muted">
+        {{ ui.admin.publication_channels }}: {{ row.channel.name if row.channel else row.job.channel_id }} ·
+        {{ ui.admin.publication_texts }}: {{ row.job.lang }} ·
+        {{ ui.admin.publication_schedule }}: {{ row.local }} ({{ row.job.scheduled_for }})
+      </p>
+      <p class="muted">
+        attempts={{ row.job.attempts }} · external_id={{ row.job.external_id or '—' }}
+        {% if row.job.next_attempt_at %} · next={{ row.job.next_attempt_at }}{% endif %}
+        {% if row.job.last_error %} · last_error={{ row.job.last_error }}{% endif %}
+      </p>
+
+      {% if row.job.status == "uncertain" %}
+        <form class="stack" method="post" action="/admin/jobs/{{ row.job.id }}/resolve">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="publication_id" value="{{ publication.id }}">
+          <input type="hidden" name="outcome" value="sent">
+          <label for="external_id_{{ row.job.id }}">{{ ui.admin.job_external_id }}</label>
+          <input id="external_id_{{ row.job.id }}" name="external_id" type="text" required>
+          <label for="note_sent_{{ row.job.id }}">{{ ui.admin.job_note }}</label>
+          <textarea id="note_sent_{{ row.job.id }}" name="note" rows="2"></textarea>
+          <button type="submit">{{ ui.admin.job_resolve_sent }}</button>
+        </form>
+
+        <form class="stack" method="post" action="/admin/jobs/{{ row.job.id }}/resolve">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="publication_id" value="{{ publication.id }}">
+          <input type="hidden" name="outcome" value="failed">
+          <label><input type="checkbox" name="confirmed_not_sent" value="1" required> {{ ui.admin.job_confirmed_not_sent }}</label>
+          <label for="note_failed_{{ row.job.id }}">{{ ui.admin.job_note }}</label>
+          <textarea id="note_failed_{{ row.job.id }}" name="note" rows="2"></textarea>
+          <button class="secondary" type="submit">{{ ui.admin.job_resolve_failed }}</button>
+        </form>
+
+        <p><a href="/admin/publications/{{ publication.id }}/jobs?kept=1">{{ ui.admin.job_leave_unknown }}</a></p>
+      {% elif row.job.status == "failed" %}
+        <form class="stack" method="post" action="/admin/jobs/{{ row.job.id }}/retry-as-new">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="publication_id" value="{{ publication.id }}">
+          <label for="scheduled_{{ row.job.id }}">{{ ui.admin.job_retry_scheduled }}</label>
+          <input id="scheduled_{{ row.job.id }}" name="scheduled_local" type="datetime-local">
+          <p class="muted">{{ ui.admin.job_retry_warning }}</p>
+          <button type="submit">{{ ui.admin.job_retry_as_new }}</button>
+        </form>
+      {% endif %}
+
+      {% if row.events %}
+        <h3>{{ ui.admin.job_events }}</h3>
+        <table>
+          <tr><th>at</th><th>level</th><th>message</th></tr>
+          {% for event in row.events %}
+            <tr><td>{{ event.at }}</td><td>{{ event.level }}</td><td>{{ event.message }}</td></tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% endblock %}

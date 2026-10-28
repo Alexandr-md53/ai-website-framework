@@ -12,7 +12,7 @@
     <tr>
       <th>{{ ui.admin.id }}</th><th>{{ ui.admin.publication_status }}</th>
       <th>{{ ui.admin.publication_texts }}</th><th>{{ ui.admin.publication_jobs }}</th>
-      <th>{{ ui.admin.publication_schedule }}</th>
+      <th>{{ ui.admin.publication_schedule }}</th><th></th>
     </tr>
     {% for row in publications %}
       <tr>
@@ -21,6 +21,7 @@
         <td>{% for code in row.texts %}{{ code }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
         <td>{{ row.jobs|length }} ({{ row.statuses|join(', ') }})</td>
         <td>{{ row.nearest_local }}<br><span class="muted">{{ row.nearest_utc }}</span></td>
+        <td><a href="/admin/publications/{{ row.publication.id }}/jobs">{{ ui.admin.publication_jobs }}</a></td>
       </tr>
     {% endfor %}
   </table>
