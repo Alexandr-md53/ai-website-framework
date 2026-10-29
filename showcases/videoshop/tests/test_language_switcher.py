@@ -71,6 +71,20 @@ def test_generic_page_keeps_query(tmp_path):
         assert _lang_values(pairs) == [code]
 
 
+def test_page_404_lang_links_do_not_carry_query(tmp_path):
+    page = _client(tmp_path).get("/page/no-such-page?token=probe&lang=ru")
+    assert page.status_code == 404
+    assert _links(page) == {"ru": "?lang=ru", "ro": "?lang=ro", "en": "?lang=en"}
+    assert "probe" not in page.text
+
+
+def test_product_404_lang_links_do_not_carry_query(tmp_path):
+    page = _client(tmp_path).get("/product/no-such-product?token=probe&lang=ru")
+    assert page.status_code == 404
+    assert _links(page) == {"ru": "?lang=ru", "ro": "?lang=ro", "en": "?lang=en"}
+    assert "probe" not in page.text
+
+
 def test_switcher_adds_lang_when_absent(tmp_path):
     page = _client(tmp_path).get("/consultant?scenario=interview&budget=300000")
     assert page.status_code == 200

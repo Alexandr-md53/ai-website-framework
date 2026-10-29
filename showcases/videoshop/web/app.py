@@ -431,6 +431,8 @@ def create_app(
         product, redirect_slug = catalog.resolve_product(slug)
         if product is None:
             context["slug"] = slug
+            # a 404 must not echo the request query into the language switcher
+            context["lang_switch_plain"] = True
             return render("public_not_found.html", context, status_code=404)
         if redirect_slug:
             return RedirectResponse(url=f"/product/{redirect_slug}", status_code=301)
@@ -1923,6 +1925,8 @@ def create_app(
             if slug == "about" and not any(item.slug == "about" for item in catalog.list_pages()):
                 return render("page_stub.html", context)
             context["slug"] = slug
+            # a 404 must not echo the request query into the language switcher
+            context["lang_switch_plain"] = True
             return render("public_not_found.html", context, status_code=404)
         if redirect_slug:
             return RedirectResponse(url=f"/page/{redirect_slug}", status_code=301)
