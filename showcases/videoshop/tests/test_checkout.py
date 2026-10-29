@@ -1,6 +1,7 @@
 ﻿"""Block 3c-2a: checkout and order creation (shop mode)."""
 from __future__ import annotations
 
+import html
 import re
 from urllib.parse import parse_qs, urlparse
 
@@ -83,6 +84,52 @@ def test_checkout_creates_order_with_snapshot_and_clears_cart(tmp_path):
         assert items[0]["price_minor"] == 129900 and items[0]["quantity"] == 2
         assert items[0]["line_total_minor"] == 2 * 129900
         assert tx.scalar("SELECT COUNT(*) FROM cart_items") == 0, "the cart must be cleared"
+
+
+def _switcher_hrefs(text):
+    block = re.search(r'<div class="langs">(.*?)</div>', text, re.S)
+    assert block is not None, "language switcher block not found"
+    return [html.unescape(match) for match in re.findall(r'href="([^"]+)"', block.group(1))]
+
+
+def _place_order(client):
+    csrf = _csrf(client)
+    _add(client, csrf)
+    response = client.post("/checkout", data={**_checkout_form(client), **_buyer()})
+    assert response.status_code == 303
+    query = parse_qs(urlparse(response.headers["location"]).query)
+    return query["order"][0], query["token"][0]
+
+
+def test_checkout_success_lang_links_do_not_carry_token(tmp_path):
+    client = _client(tmp_path)
+    number, token = _place_order(client)
+    page = client.get(f"/checkout/success?order={number}&token={token}&lang=ru")
+    assert page.status_code == 200
+    hrefs = _switcher_hrefs(page.text)
+    assert hrefs == [f"/checkout/success?order={number}&lang={code}" for code in ("ru", "ro", "en")]
+    assert all("token" not in href for href in hrefs)
+    assert token not in " ".join(hrefs)
+
+
+def test_checkout_success_lang_switch_keeps_confirmation(tmp_path):
+    client = _client(tmp_path)
+    number, token = _place_order(client)
+    page = client.get(f"/checkout/success?order={number}&token={token}&lang=ru")
+    ro = [href for href in _switcher_hrefs(page.text) if "lang=ro" in href][0]
+    switched = client.get(ro)
+    assert switched.status_code == 200
+    assert number in switched.text
+    assert token not in switched.text
+    assert f"/order/{number}?token=" not in switched.text
+
+
+def test_checkout_success_bad_token_does_not_grant_order(tmp_path):
+    client = _client(tmp_path)
+    number, _token = _place_order(client)
+    page = client.get(f"/checkout/success?order={number}&token=bogus")
+    assert page.status_code == 200
+    assert client.get(f"/order/{number}?token=bogus").status_code == 404
 
 
 def test_empty_cart_is_rejected(tmp_path):

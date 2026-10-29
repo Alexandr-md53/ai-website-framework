@@ -35,7 +35,7 @@ import sqlite3
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Request
@@ -842,8 +842,17 @@ def create_app(
     async def public_checkout_success(request: Request) -> HTMLResponse:
         _cart_guard()
         context = page_context(request)
-        context["order_number"] = (request.query_params.get("order") or "").strip()
+        order_number = (request.query_params.get("order") or "").strip()
+        context["order_number"] = order_number
         context["order_token"] = (request.query_params.get("token") or "").strip()
+        # a language switch keeps the confirmation (order number) but must not
+        # echo the one-time order token into the switcher links
+        if order_number:
+            context["lang_url"] = lambda code: (
+                f"/checkout/success?order={quote(order_number)}&lang={code}"
+            )
+        else:
+            context["lang_url"] = lambda code: f"/checkout/success?lang={code}"
         return render("checkout_success.html", context)
 
     @app.get("/order/{number}", response_class=HTMLResponse)
