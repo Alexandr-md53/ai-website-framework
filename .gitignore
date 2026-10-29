@@ -33,3 +33,8 @@ launch_shop.py
 
 # VideoShop generated artifacts (not committed)
 showcases/videoshop/reports/snapshots/
+
+# VideoShop local data and sqlite backups (never commit)
+data/
+*.sqlite
+*.backup-*
