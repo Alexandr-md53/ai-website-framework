@@ -1,0 +1,4 @@
+﻿<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><title>Admin - {{ profile.name.ru if profile else 'Cafe' }}</title>
+<link rel="stylesheet" href="/assets/style.css"><style>.admin-nav{padding:10px;background:#eee}.admin-form label{display:block;margin:8px 0}.admin-form input,textarea{width:100%}</style>
+</head><body><div class="admin-nav"><a href="/admin">Dashboard</a> | <a href="/admin/profile">Profile</a> | <a href="/admin/menu">Menu</a></div>{% block content %}{% endblock %}</body></html>

@@ -1,3 +1,11 @@
+import os
+os.environ["CAFE_ADMIN_USER"]="admin"
+os.environ["CAFE_ADMIN_PASSWORD"]="secret123"
+import base64
+def _auth():
+    tok = base64.b64encode(b"admin:secret123").decode()
+    return {"Authorization": f"Basic {tok}"}
+
 """
 Real HTTP E2E — Slice 2 acceptance
 TestClient -> FastAPI -> actual routes -> actual services -> Кофе/Coffee
@@ -91,7 +99,7 @@ def test_http_e2e_set_language_cookie_and_persistence():
 
 def test_http_e2e_admin_language():
     client, service, out_dir, up_dir = make_client_with_data()
-    r = client.get("/admin?lang=en")
+    r = client.get("/admin?lang=en", headers=_auth())
     assert r.status_code == 200
     data = r.json()
     assert data["lang"] == "en"

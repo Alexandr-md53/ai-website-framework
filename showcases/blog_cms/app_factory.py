@@ -180,9 +180,13 @@ def create_app(
         st = None
         if status:
             try:
-                st = PostStatus(status.upper())
+                raw = status.strip().lower()
+                st = PostStatus(raw)
             except Exception:
-                raise HTTPException(400, f"invalid status {status}")
+                try:
+                    st = PostStatus[status.strip().upper()]
+                except Exception:
+                    raise HTTPException(400, f"invalid status {status}")
         return [_to_dict(p) for p in svc.list_posts(st)]
 
     @app.patch("/posts/{post_id}/seo")
