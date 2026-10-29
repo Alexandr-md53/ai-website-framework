@@ -61,6 +61,16 @@ def test_switcher_keeps_scenario_and_budget(tmp_path):
         assert _lang_values(pairs) == [code]
 
 
+def test_generic_page_keeps_query(tmp_path):
+    page = _client(tmp_path).get("/catalog?probe=1&lang=ru")
+    assert page.status_code == 200
+    for code, href in _links(page).items():
+        path, pairs = _query(href)
+        assert path == "/catalog"
+        assert ("probe", "1") in pairs
+        assert _lang_values(pairs) == [code]
+
+
 def test_switcher_adds_lang_when_absent(tmp_path):
     page = _client(tmp_path).get("/consultant?scenario=interview&budget=300000")
     assert page.status_code == 200

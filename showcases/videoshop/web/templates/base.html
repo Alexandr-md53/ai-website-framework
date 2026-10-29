@@ -332,7 +332,7 @@
     <div class="langs">
       {% set switcher = admin_languages if admin_languages is defined else languages %}
       {% for code, title in switcher %}
-        <a class="{% if code == lang %}active{% endif %}" href="{{ lang_url(code) }}" title="{{ title }}">{{ code }}</a>
+        <a class="{% if code == lang %}active{% endif %}" href="{{ ('?lang=' ~ code) if (lang_switch_plain is defined and lang_switch_plain) else lang_url(code) }}" title="{{ title }}">{{ code }}</a>
       {% endfor %}
     </div>
   </div>

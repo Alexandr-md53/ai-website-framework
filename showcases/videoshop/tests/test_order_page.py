@@ -101,6 +101,18 @@ def test_all_failures_return_the_same_404_body(tmp_path):
     assert len({response.text for response in bodies}) == 1, "404 responses must be identical"
 
 
+def test_order_404_lang_links_do_not_carry_token(tmp_path):
+    client = _client(tmp_path)
+    number, _token, _ = _place_order(client)
+    page = client.get(_order_url(number, "bogus"))
+    assert page.status_code == 404
+    block = re.search(r'<div class="langs">(.*?)</div>', page.text, re.S)
+    assert block is not None, "language switcher block not found"
+    hrefs = set(re.findall(r'href="([^"]+)"', block.group(1)))
+    assert hrefs == {"?lang=ru", "?lang=ro", "?lang=en"}, hrefs
+    assert "token" not in block.group(1)
+
+
 def test_order_page_is_shop_only(tmp_path):
     for mode in ("catalog", "visitka"):
         (tmp_path / mode).mkdir(parents=True, exist_ok=True)

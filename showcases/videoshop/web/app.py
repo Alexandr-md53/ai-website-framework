@@ -854,6 +854,9 @@ def create_app(
         if order is None:
             # identical response for "no such order", "no token" and "bad token"
             context["slug"] = number
+            # the 404 body must be identical for every failure mode, so the
+            # language switcher must not echo this request query (order token)
+            context["lang_switch_plain"] = True
             return render("public_not_found.html", context, status_code=404)
         context["order"] = order
         return render("order.html", context)
